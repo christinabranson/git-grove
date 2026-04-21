@@ -339,16 +339,16 @@ Each worktree maps to exactly one Compose project:
 ```
 worktree: ~/repos/platform-worktrees/feat-auth-refresh
   compose project: -p feat-auth-refresh
-  env file:        ~/repos/platform-worktrees/feat-auth-refresh/.env.agent
-  web port:        8081  (read from .env.agent)
-  localstack port: 4567  (read from .env.agent)
+  env file:        ~/repos/platform-worktrees/feat-auth-refresh/.env.worktree
+  web port:        8081  (read from .env.worktree)
+  localstack port: 4567  (read from .env.worktree)
 ```
 
-Grove reads the `.env.agent` file at the worktree root to discover port bindings and the project name. It never writes to this file.
+Grove reads the `.env.worktree` file at the worktree root to discover port bindings and the project name. It never writes to this file.
 
-### `.env.agent` convention
+### `.env.worktree` convention
 
-Each worktree contains a `.env.agent` file (gitignored) that configures its isolated stack. Grove looks for these specific keys:
+Each worktree contains a `.env.worktree` file (gitignored) that configures its isolated stack. Grove looks for these specific keys:
 
 ```bash
 COMPOSE_PROJECT_NAME=feat-auth-refresh   # used as -p value
@@ -358,19 +358,19 @@ REDIS_DB=1                               # informational, shown in card
 DB_SCHEMA=platform_feat_auth_refresh     # informational, shown in card
 ```
 
-Any key not present is simply not shown in the UI. Grove degrades gracefully — a worktree without a `.env.agent` just has no Docker section on its card.
+Any key not present is simply not shown in the UI. Grove degrades gracefully — a worktree without a `.env.worktree` just has no Docker section on its card.
 
 Grove also checks for a `docker-compose.yml` or `compose.yaml` at the repo root to confirm Docker support exists before showing any Docker UI on the card.
 
 ### Lifecycle controls
 
-Available on any worktree card that has a valid `.env.agent`. All actions are explicit — nothing runs automatically.
+Available on any worktree card that has a valid `.env.worktree`. All actions are explicit — nothing runs automatically.
 
 | Action | Command Grove runs | When available |
 |---|---|---|
-| **Start stack** | `docker compose -p <project> --env-file .env.agent up -d --build` | Stack is not running |
-| **Stop stack** | `docker compose -p <project> --env-file .env.agent down` | Stack is running |
-| **Teardown (with volumes)** | `docker compose -p <project> --env-file .env.agent down -v` | Stack is running — requires confirmation dialog |
+| **Start stack** | `docker compose -p <project> --env-file .env.worktree up -d --build` | Stack is not running |
+| **Stop stack** | `docker compose -p <project> --env-file .env.worktree down` | Stack is running |
+| **Teardown (with volumes)** | `docker compose -p <project> --env-file .env.worktree down -v` | Stack is running — requires confirmation dialog |
 | **View logs** | Opens a log stream in the card's terminal panel | Stack is running |
 
 "Teardown with volumes" (`down -v`) requires an explicit confirmation dialog before executing — it is destructive and should never be a one-click action.
@@ -395,7 +395,7 @@ When a stack is running, port links appear as clickable badges on the worktree c
 - **`:8081`** → opens `http://localhost:8081` in the system browser (the app)
 - **`:4567`** → opens `http://localhost:4567` in the system browser (localstack)
 
-Port values come from `.env.agent`. If a port key is absent, that badge is not shown.
+Port values come from `.env.worktree`. If a port key is absent, that badge is not shown.
 
 ### Docker section in TUI detail panel
 
