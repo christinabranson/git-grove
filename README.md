@@ -24,9 +24,7 @@ Grove is a terminal-based mission control for parallel agentic workflows. It wra
 
 ## Installation
 
-Grove is a global npm package. It requires Node 18+ and works on any machine where the underlying tools (`git`, `gh`, `docker`) are already installed.
-
-**From source (development):**
+Grove is a global npm package. It requires Node 18+ — check with `node --version` if you're managing Node via `nvm` or similar.
 
 ```bash
 git clone https://github.com/your-org/grove-wt.git
@@ -36,13 +34,13 @@ npm run build
 npm link          # makes `grove` available globally
 ```
 
-**Verify:**
+Once linked, confirm it worked:
 
 ```bash
 grove --version
 ```
 
-**Dependencies used at runtime** (must already be in PATH):
+**Dependencies** — Grove requires these tools already in your PATH before first use:
 
 | Tool | Required for |
 |------|-------------|
@@ -50,9 +48,11 @@ grove --version
 | `gh` | PR resolution (`grove start <PR#>`), GitHub sync |
 | `docker` | Docker Compose environment management |
 
-Grove degrades gracefully when any of these are absent — the features that need them simply won't activate.
+If any of these are missing, the related features won't activate — no crash, but check your PATH if something seems off.
 
-**Editor detection** (`grove open` / `o` key): Grove resolves your editor automatically — no configuration required. It checks, in order: the `editor` field in `.grove/config.json`, the `$VISUAL` environment variable, `$EDITOR`, then scans for `code`, `cursor`, `windsurf`, `vim`, and `nano`. On macOS it also checks standard app bundle locations, so VS Code works even if `code` isn't in your PATH.
+### Editor detection
+
+Grove resolves your editor automatically for `grove open` / `o` key — no configuration required. It checks, in order: the `editor` field in `.grove/config.json`, the `$VISUAL` environment variable, `$EDITOR`, then scans for `code`, `cursor`, `windsurf`, `vim`, and `nano`. On macOS it also checks standard app bundle locations, so VS Code works even if `code` isn't in your PATH.
 
 ---
 
