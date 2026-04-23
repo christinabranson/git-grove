@@ -24,14 +24,15 @@ interface WorktreeRowProps {
 
 function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
   const prefix = isSelected ? "▶ " : "  ";
-  const branchColor = worktree.isMain ? "blue" : "white";
 
-  // Truncate branch name to fit
-  const maxBranchLen = width - 18;
-  const branch =
-    worktree.branch.length > maxBranchLen
-      ? worktree.branch.slice(0, maxBranchLen - 1) + "…"
-      : worktree.branch.padEnd(maxBranchLen);
+  const displayName = worktree.isMain ? "primary" : worktree.branch;
+  const displayColor = worktree.isMain ? "green" : "white";
+
+  const maxNameLen = width - 18;
+  const name =
+    displayName.length > maxNameLen
+      ? displayName.slice(0, maxNameLen - 1) + "…"
+      : displayName.padEnd(maxNameLen);
 
   return (
     <Box flexDirection="column">
@@ -39,13 +40,19 @@ function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
         <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
           {prefix}
         </Text>
-        <Text color={branchColor} bold={isSelected}>
-          {branch}
+        <Text color={displayColor} bold={isSelected}>
+          {name}
         </Text>
         <Text> </Text>
         <PRLabel worktree={worktree} />
         <ChangesLabel worktree={worktree} />
       </Box>
+      {worktree.isMain && (
+        <Text color="gray" dimColor>
+          {"     "}
+          {worktree.branch}
+        </Text>
+      )}
       {worktree.baseBranch && !worktree.isMain && (
         <Text color="gray" dimColor>
           {"     "}off {worktree.baseBranch}

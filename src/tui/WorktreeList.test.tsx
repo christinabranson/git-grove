@@ -47,8 +47,34 @@ describe("WorktreeList", () => {
       makeWorktree({ branch: "feature-auth", isMain: false }),
     ];
     const { lastFrame } = renderList(worktrees);
+    expect(lastFrame()).toContain("primary");
     expect(lastFrame()).toContain("main");
     expect(lastFrame()).toContain("feature-auth");
+  });
+
+  test('shows "primary" label for main worktree', () => {
+    const wt = makeWorktree({ isMain: true, branch: "some-branch" });
+    const { lastFrame } = renderList([wt]);
+    expect(lastFrame()).toContain("primary");
+    expect(lastFrame()).toContain("some-branch");
+  });
+
+  test("shows branch name as subtitle for main worktree, not as main label", () => {
+    const wt = makeWorktree({ isMain: true, branch: "my-feature-branch" });
+    const { lastFrame } = renderList([wt]);
+    const frame = lastFrame()!;
+    const lines = frame.split("\n");
+    const primaryLine = lines.find((l) => l.includes("primary"));
+    expect(primaryLine).not.toContain("my-feature-branch");
+    const subtitleLine = lines.find((l) => l.includes("my-feature-branch"));
+    expect(subtitleLine).toBeDefined();
+  });
+
+  test("non-main worktrees show branch name as main label, not primary", () => {
+    const wt = makeWorktree({ isMain: false, branch: "feature-x" });
+    const { lastFrame } = renderList([wt]);
+    expect(lastFrame()).toContain("feature-x");
+    expect(lastFrame()).not.toContain("primary");
   });
 
   test("selected item shows ▶ prefix", () => {
@@ -128,7 +154,7 @@ describe("WorktreeList", () => {
 
   test("truncates long branch names to fit width", () => {
     const longBranch = "a".repeat(50);
-    const wt = makeWorktree({ branch: longBranch });
+    const wt = makeWorktree({ branch: longBranch, isMain: false });
     const { lastFrame } = renderList([wt], 0, 30);
     expect(lastFrame()).toContain("…");
   });
