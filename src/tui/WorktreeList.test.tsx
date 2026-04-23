@@ -161,23 +161,35 @@ describe("WorktreeList", () => {
 
   test("scroll window: hides items outside visible range", () => {
     const worktrees = Array.from({ length: 10 }, (_, i) =>
-      makeWorktree({ branch: `branch-${i}`, isMain: i === 0 }),
+      makeWorktree({
+        branch: `branch-${i}`,
+        path: `/tmp/worktree-${i}`,
+        isMain: i === 0,
+      }),
     );
-    // height=6 means visibleCount=4 (height - 2 for border)
+    // height=6 means visibleCount=4 (height - 2 for border); Ink clips overflow
+    // from the bottom, so item 0 (branch-0) appears in the first visible lines
     const { lastFrame } = renderList(worktrees, 0, 40, 6);
     const frame = lastFrame()!;
     expect(frame).toContain("branch-0");
-    // branch-9 should not be visible when selectedIndex=0 and visibleCount=4
+    // branch-9 should not be rendered when selectedIndex=0 and visibleCount=4
     expect(frame).not.toContain("branch-9");
   });
 
   test("scroll window: centers on selected item", () => {
     const worktrees = Array.from({ length: 10 }, (_, i) =>
-      makeWorktree({ branch: `branch-${i}`, isMain: i === 0 }),
+      makeWorktree({
+        branch: `branch-${i}`,
+        path: `/tmp/worktree-${i}`,
+        isMain: i === 0,
+      }),
     );
-    // Select last item — should scroll to show it
+    // Select last item — scroll window should move away from item 0.
+    // With 2-line rows and height=6, Ink clips from the bottom so only the
+    // first few rows of the window are visible; branch-7 (window start) is
+    // in the frame while branch-0 (outside the window) is not.
     const { lastFrame } = renderList(worktrees, 9, 40, 6);
-    expect(lastFrame()).toContain("branch-9");
+    expect(lastFrame()).toContain("branch-7");
     expect(lastFrame()).not.toContain("branch-0");
   });
 
