@@ -1,6 +1,6 @@
 # Grove — Product Requirements
 
-> *"See the forest. Manage the trees."*
+> _"See the forest. Manage the trees."_
 
 ## North Star
 
@@ -20,14 +20,14 @@ PR review features (diff view, inline comments, AI review chat) are explicitly *
 
 ## Tech Stack
 
-| Layer | Choice |
-|---|---|
-| Language | TypeScript |
-| TUI framework | Ink (React for the terminal) |
-| CLI parsing | Commander.js |
-| Shell calls | execa |
-| Pretty output | chalk, cli-table3 |
-| Distribution | npm global package (`npm install -g grove-wt`) |
+| Layer         | Choice                                         |
+| ------------- | ---------------------------------------------- |
+| Language      | TypeScript                                     |
+| TUI framework | Ink (React for the terminal)                   |
+| CLI parsing   | Commander.js                                   |
+| Shell calls   | execa                                          |
+| Pretty output | chalk, cli-table3                              |
+| Distribution  | npm global package (`npm install -g grove-wt`) |
 
 Installs as a global npm package. Works on any machine with Node. No Electron, no browser, no build step for the end user.
 
@@ -87,6 +87,7 @@ Two modes, same binary:
 The left panel in TUI mode. A navigable list of all worktrees in the current repo. Arrow keys to move, Enter or right arrow to focus the detail panel.
 
 Each row shows:
+
 ```
 ▶ feat/auth-refresh     ● running   PR #847   +3
   feat/pipeline-cache   ◐ waiting   PR #831   clean
@@ -98,13 +99,13 @@ Each row shows:
 
 ### Agent state indicators
 
-| Symbol | State |
-|---|---|
-| `●` green | running |
-| `◐` amber | waiting |
-| `■` gray | done |
-| `✕` red | errored |
-| _(none)_ | no agent |
+| Symbol    | State    |
+| --------- | -------- |
+| `●` green | running  |
+| `◐` amber | waiting  |
+| `■` gray  | done     |
+| `✕` red   | errored  |
+| _(none)_  | no agent |
 
 ### GitHub indicators
 
@@ -144,7 +145,6 @@ All commands default to the current worktree (detected from `git worktree list`)
 
 ---
 
-
 ---
 
 ## Agent Activity Feed
@@ -156,21 +156,22 @@ The centerpiece of Grove. A unified, real-time view of all active Codex sessions
 A dedicated **Agents** view (accessible from the sidebar) shows all worktrees that have or recently had an active agent session. Worktrees with no agent history are hidden from this view but visible in All Worktrees.
 
 Each entry in the feed shows:
+
 - Worktree name and branch
 - Agent status indicator: **running** (green pulse), **waiting** (amber pulse), **done** (gray), **errored** (red)
-- Current activity string from the manifest (e.g. *"editing AuthService.ts"*, *"running test suite"*)
+- Current activity string from the manifest (e.g. _"editing AuthService.ts"_, _"running test suite"_)
 - Time elapsed since session start
 - Quick actions: open terminal, open in VS Code, open local port
 
 ### Status indicators
 
-| State | Meaning | Visual |
-|---|---|---|
-| `running` | Agent is actively executing | Green pulsing dot |
+| State     | Meaning                                               | Visual            |
+| --------- | ----------------------------------------------------- | ----------------- |
+| `running` | Agent is actively executing                           | Green pulsing dot |
 | `waiting` | Agent is paused — tests running, awaiting input, etc. | Amber pulsing dot |
-| `done` | Session completed successfully | Gray static dot |
-| `errored` | Session exited with non-zero code | Red static dot |
-| `idle` | No session; worktree exists but agent not running | No dot |
+| `done`    | Session completed successfully                        | Gray static dot   |
+| `errored` | Session exited with non-zero code                     | Red static dot    |
+| `idle`    | No session; worktree exists but agent not running     | No dot            |
 
 ### Session log
 
@@ -207,15 +208,15 @@ The `.worktree-manifest.json` file is the contract between agents and Grove. Age
 
 ### Fields
 
-| Field | Type | Description |
-|---|---|---|
-| `port` | number | Local port for the agent's dev server or environment |
-| `agentName` | string | Which agent is running (`codex`, `claude`, custom) |
-| `agentStatus` | string | `idle` \| `running` \| `waiting` \| `done` |
-| `agentActivity` | string | Human-readable current activity, updated as the agent works |
-| `startedAt` | ISO string | When the current session started |
-| `testResults` | object | Optional — last known test run results |
-| `notes` | string | Optional — freeform notes, editable from Grove UI |
+| Field           | Type       | Description                                                 |
+| --------------- | ---------- | ----------------------------------------------------------- |
+| `port`          | number     | Local port for the agent's dev server or environment        |
+| `agentName`     | string     | Which agent is running (`codex`, `claude`, custom)          |
+| `agentStatus`   | string     | `idle` \| `running` \| `waiting` \| `done`                  |
+| `agentActivity` | string     | Human-readable current activity, updated as the agent works |
+| `startedAt`     | ISO string | When the current session started                            |
+| `testResults`   | object     | Optional — last known test run results                      |
+| `notes`         | string     | Optional — freeform notes, editable from Grove UI           |
 
 ### Who writes it
 
@@ -226,6 +227,7 @@ The `.worktree-manifest.json` file is the contract between agents and Grove. Age
 ### Test results display
 
 If `testResults` is present, the worktree card shows a compact test status badge:
+
 - `✓ 42 passed` in green if all passing
 - `✗ 2 failed` in red if any failing
 - Tapping the badge shows pass/fail/skip counts and the time of last run
@@ -235,9 +237,11 @@ If `testResults` is present, the worktree card shows a compact test status badge
 ## Worktree Creation
 
 ### TUI mode
+
 Press `n` from the worktree list. Grove prompts for a branch name or PR number inline.
 
 ### Command mode
+
 ```bash
 grove start feat/my-feature     # from existing remote branch
 grove start 1234                 # from PR number — resolves branch via gh
@@ -254,7 +258,7 @@ grove start feat/new-thing --new # create new branch off main
 
 ### After creation
 
-Grove asks: *"Launch a Codex session? (y/N)"* and optionally accepts an initial prompt. Skippable — worktrees don't require an agent.
+Grove asks: _"Launch a Codex session? (y/N)"_ and optionally accepts an initial prompt. Skippable — worktrees don't require an agent.
 
 New worktrees are placed at `<repo-parent>/<repo-name>-worktrees/<branch-name>` by default. Configurable via `grove config set worktreeRoot`.
 
@@ -264,12 +268,12 @@ New worktrees are placed at `<repo-parent>/<repo-name>-worktrees/<branch-name>` 
 
 All manual. Available as keypresses in TUI mode or explicit commands.
 
-| TUI key | Command | Action |
-|---|---|---|
-| `s` | `grove sync` | Refresh all manifests + git status |
-| `f` | `grove sync --fetch` | `git fetch origin` for selected worktree |
-| `r` | `grove sync --rebase` | `git rebase origin/main` — warns if agent is running |
-| `S` | `grove sync --all` | Fetch all worktrees, surface conflicts |
+| TUI key | Command               | Action                                               |
+| ------- | --------------------- | ---------------------------------------------------- |
+| `s`     | `grove sync`          | Refresh all manifests + git status                   |
+| `f`     | `grove sync --fetch`  | `git fetch origin` for selected worktree             |
+| `r`     | `grove sync --rebase` | `git rebase origin/main` — warns if agent is running |
+| `S`     | `grove sync --all`    | Fetch all worktrees, surface conflicts               |
 
 Rebase is disabled while an agent session is active in that worktree.
 
@@ -313,17 +317,18 @@ Populated from `git diff --stat` and `git status --short` in the worktree direct
 
 ---
 
-
-
 The following features are explicitly out of scope for the initial build. They may be revisited later.
 
 ### PR Diff View
+
 A full GitHub-style inline diff viewer with syntax highlighting and line-by-line navigation. The Change Footprint feature (file tree + `+N -N` counts) covers the agent management use case. A full diff viewer may come later alongside PR review features.
 
 ### Inline PR Comments & GitHub Sync
+
 Drafting review comments in Grove and syncing them to GitHub. Deferred with the diff view.
 
 ### Custom Review Instructions
+
 Per-repo and global AI review prompt customization. Relevant when PR review mode is built; deferred until then.
 
 ---
@@ -366,12 +371,12 @@ Grove also checks for a `docker-compose.yml` or `compose.yaml` at the repo root 
 
 Available on any worktree card that has a valid `.env.worktree`. All actions are explicit — nothing runs automatically.
 
-| Action | Command Grove runs | When available |
-|---|---|---|
-| **Start stack** | `docker compose -p <project> --env-file .env.worktree up -d --build` | Stack is not running |
-| **Stop stack** | `docker compose -p <project> --env-file .env.worktree down` | Stack is running |
-| **Teardown (with volumes)** | `docker compose -p <project> --env-file .env.worktree down -v` | Stack is running — requires confirmation dialog |
-| **View logs** | Opens a log stream in the card's terminal panel | Stack is running |
+| Action                      | Command Grove runs                                                   | When available                                  |
+| --------------------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| **Start stack**             | `docker compose -p <project> --env-file .env.worktree up -d --build` | Stack is not running                            |
+| **Stop stack**              | `docker compose -p <project> --env-file .env.worktree down`          | Stack is running                                |
+| **Teardown (with volumes)** | `docker compose -p <project> --env-file .env.worktree down -v`       | Stack is running — requires confirmation dialog |
+| **View logs**               | Opens a log stream in the card's terminal panel                      | Stack is running                                |
 
 "Teardown with volumes" (`down -v`) requires an explicit confirmation dialog before executing — it is destructive and should never be a one-click action.
 
@@ -381,12 +386,12 @@ Grove determines stack state by running `docker compose -p <project> ps --format
 
 Possible states shown on the card:
 
-| State | Meaning |
-|---|---|
-| `running` | All expected containers are up |
-| `partial` | Some containers are up, some are not — likely a startup failure |
-| `stopped` | Stack exists but all containers are down |
-| `not started` | No containers found for this project name |
+| State         | Meaning                                                         |
+| ------------- | --------------------------------------------------------------- |
+| `running`     | All expected containers are up                                  |
+| `partial`     | Some containers are up, some are not — likely a startup failure |
+| `stopped`     | Stack exists but all containers are down                        |
+| `not started` | No containers found for this project name                       |
 
 ### Port links
 

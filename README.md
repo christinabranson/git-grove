@@ -12,7 +12,7 @@
  ░███████                ░███████
 ```
 
-> *See the forest. Manage the trees.*
+> _See the forest. Manage the trees._
 
 Grove is a terminal-based mission control for parallel agentic workflows. It wraps git worktrees, dev environment lifecycle, and AI agent sessions into a single keyboard-driven interface — without replacing any of your existing tooling.
 
@@ -54,11 +54,11 @@ grove --version
 
 **Dependencies** — Grove requires these tools already in your PATH before first use:
 
-| Tool | Required for |
-|------|-------------|
-| `git` | All worktree operations |
-| `gh` | PR resolution (`grove start <PR#>`), GitHub sync |
-| `docker` | Docker Compose environment management |
+| Tool     | Required for                                     |
+| -------- | ------------------------------------------------ |
+| `git`    | All worktree operations                          |
+| `gh`     | PR resolution (`grove start <PR#>`), GitHub sync |
+| `docker` | Docker Compose environment management            |
 
 If any of these are missing, the related features won't activate — no crash, but check your PATH if something seems off.
 
@@ -124,12 +124,12 @@ Grove only writes `.grove/config.json`. It never touches `docker-compose.yml`, `
 
 ### Flags
 
-| Flag | Effect |
-|------|--------|
+| Flag              | Effect                                                        |
+| ----------------- | ------------------------------------------------------------- |
 | `--preset <name>` | Skip detection, use a known preset (`docker`, `vite`, `node`) |
-| `--dry-run` | Print the proposed config without writing anything |
-| `--yes` | Skip the confirmation prompt |
-| `--reset` | Overwrite an existing `.grove/config.json` |
+| `--dry-run`       | Print the proposed config without writing anything            |
+| `--yes`           | Skip the confirmation prompt                                  |
+| `--reset`         | Overwrite an existing `.grove/config.json`                    |
 
 ```bash
 grove setup --preset docker --yes     # non-interactive, docker preset
@@ -139,23 +139,24 @@ grove setup --reset                   # regenerate from scratch
 
 ### Available presets
 
-| Preset | When to use |
-|--------|-------------|
+| Preset   | When to use                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------------------- |
 | `docker` | Project uses Docker Compose. Grove maps services and marks shared infra (postgres, redis, etc.) automatically. |
-| `vite` | Vite-based frontend (Vue, React, Svelte). Runs `npm run dev` per worktree. |
-| `node` | Generic Node.js project. Runs `npm run dev` or `npm start` per worktree. |
+| `vite`   | Vite-based frontend (Vue, React, Svelte). Runs `npm run dev` per worktree.                                     |
+| `node`   | Generic Node.js project. Runs `npm run dev` or `npm start` per worktree.                                       |
 
 ### Naming templates
 
 The `naming` section in `.grove/config.json` stores **rules, not values**. Templates are expanded at `grove start` time so each worktree gets unique, collision-free names.
 
-| Variable | Expands to |
-|----------|-----------|
-| `${branch}` | Branch name as-is (e.g. `feat/auth-refresh`) |
+| Variable         | Expands to                                                            |
+| ---------------- | --------------------------------------------------------------------- |
+| `${branch}`      | Branch name as-is (e.g. `feat/auth-refresh`)                          |
 | `${branch_safe}` | Branch lowercased, `/` → `-`, max 40 chars (e.g. `feat-auth-refresh`) |
-| `${project}` | Project name from config |
+| `${project}`     | Project name from config                                              |
 
 Example:
+
 - `"composeProject": "grove-${branch_safe}"` → `grove-feat-auth-refresh`
 - `"dbSchema": "${project}_${branch_safe}"` → `myapp_feat_auth_refresh`
 - `"webPort": "auto"` → Grove finds a free port at spin time
@@ -226,19 +227,19 @@ When this file is present, Grove uses it instead of inferring the environment. Y
 
 **Provider types:**
 
-| `type` | When to use |
-|--------|-------------|
-| `docker-compose` | Project uses Docker Compose |
-| `node-scripts` | Plain Node project, `npm run dev` / `npm start` |
-| `custom-shell` | Custom start command |
+| `type`           | When to use                                     |
+| ---------------- | ----------------------------------------------- |
+| `docker-compose` | Project uses Docker Compose                     |
+| `node-scripts`   | Plain Node project, `npm run dev` / `npm start` |
+| `custom-shell`   | Custom start command                            |
 
 **Top-level config fields:**
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `sharedComposeFile` | `compose.shared.yaml` | Path to the shared infrastructure compose file |
-| `editor` | auto-detected | Editor to open with `grove open` / `o` key |
-| `worktrees.root` | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed |
+| Field               | Default                          | Description                                    |
+| ------------------- | -------------------------------- | ---------------------------------------------- |
+| `sharedComposeFile` | `compose.shared.yaml`            | Path to the shared infrastructure compose file |
+| `editor`            | auto-detected                    | Editor to open with `grove open` / `o` key     |
+| `worktrees.root`    | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed                 |
 
 ---
 
@@ -289,7 +290,7 @@ services:
 networks:
   shared_net:
     external: true
-    name: ${SHARED_PROJECT_NAME}_default   # Grove writes this into .env.worktree
+    name: ${SHARED_PROJECT_NAME}_default # Grove writes this into .env.worktree
 ```
 
 Docker Compose automatically creates a network named `<project>_default` for every project. Per-worktree services join the shared project's network as an external network — that's how they reach `db` and `redis` by service name without any DNS configuration.
@@ -431,10 +432,11 @@ status back to Grove. Update it as your work progresses.
     }
 
 Set `agentStatus` to:
-- `running`  — actively working
-- `waiting`  — blocked, waiting for tests, or need human input
-- `done`     — finished successfully
-- `errored`  — encountered an unrecoverable problem
+
+- `running` — actively working
+- `waiting` — blocked, waiting for tests, or need human input
+- `done` — finished successfully
+- `errored` — encountered an unrecoverable problem
 
 The `agentActivity` string is displayed live in the Grove TUI — keep it short
 and meaningful (e.g. "writing tests for AuthService", "running migration").
@@ -486,19 +488,19 @@ grove
 
 **Navigation:**
 
-| Key | Action |
-|-----|--------|
-| `↑` / `k` | Move up in worktree list |
-| `↓` / `j` | Move down |
-| `s` | Sync — refresh all manifests, git status, docker state |
-| `o` | Open selected worktree in editor |
-| `u` | Docker up (selected worktree) |
-| `d` | Docker down (selected worktree) |
-| `x` | Expand / collapse change footprint |
-| `/` | Filter worktrees by branch name or agent state |
-| `Esc` | Clear filter |
-| `?` | Toggle keyboard shortcut help |
-| `q` | Quit |
+| Key       | Action                                                 |
+| --------- | ------------------------------------------------------ |
+| `↑` / `k` | Move up in worktree list                               |
+| `↓` / `j` | Move down                                              |
+| `s`       | Sync — refresh all manifests, git status, docker state |
+| `o`       | Open selected worktree in editor                       |
+| `u`       | Docker up (selected worktree)                          |
+| `d`       | Docker down (selected worktree)                        |
+| `x`       | Expand / collapse change footprint                     |
+| `/`       | Filter worktrees by branch name or agent state         |
+| `Esc`     | Clear filter                                           |
+| `?`       | Toggle keyboard shortcut help                          |
+| `q`       | Quit                                                   |
 
 ### Command mode
 
@@ -707,9 +709,9 @@ Grove global settings are stored in `~/.grove/config.json`. Configure with:
 grove config set <key> <value>
 ```
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `worktreeRoot` | `<repo-parent>/<repo-name>-worktrees/` | Where new worktrees are placed |
-| `aiProvider` | `codex` | `codex` or `claude` |
-| `theme` | `dark` | `dark` or `light` |
-| `notifications` | `false` | OS-level notifications when agent state changes |
+| Key             | Default                                | Description                                     |
+| --------------- | -------------------------------------- | ----------------------------------------------- |
+| `worktreeRoot`  | `<repo-parent>/<repo-name>-worktrees/` | Where new worktrees are placed                  |
+| `aiProvider`    | `codex`                                | `codex` or `claude`                             |
+| `theme`         | `dark`                                 | `dark` or `light`                               |
+| `notifications` | `false`                                | OS-level notifications when agent state changes |
