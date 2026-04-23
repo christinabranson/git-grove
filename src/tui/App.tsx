@@ -1,18 +1,18 @@
-import React, { useState, useCallback } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
-import { execa } from 'execa';
-import type { Worktree } from '../types.js';
-import { openInEditor } from './editor.js';
-import { loadWorktrees } from '../data/worktrees.js';
-import { WorktreeList } from './WorktreeList.js';
-import { DetailPanel } from './DetailPanel.js';
-import { CompactFootprint } from './ChangeFootprint.js';
-import { KeybindBar } from './KeybindBar.js';
-import { FilterBar } from './FilterBar.js';
-import { useTerminalSize } from './useTerminalSize.js';
-import { LOGO } from './logo.js';
+import React, { useState, useCallback } from "react";
+import { Box, Text, useInput, useApp } from "ink";
+import { execa } from "execa";
+import type { Worktree } from "../types.js";
+import { openInEditor } from "./editor.js";
+import { loadWorktrees } from "../data/worktrees.js";
+import { WorktreeList } from "./WorktreeList.js";
+import { DetailPanel } from "./DetailPanel.js";
+import { CompactFootprint } from "./ChangeFootprint.js";
+import { KeybindBar } from "./KeybindBar.js";
+import { FilterBar } from "./FilterBar.js";
+import { useTerminalSize } from "./useTerminalSize.js";
+import { LOGO } from "./logo.js";
 
-type AppView = 'main' | 'help' | 'confirmDelete';
+type AppView = "main" | "help" | "confirmDelete";
 
 interface AppProps {
   repoPath: string;
@@ -26,18 +26,16 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const [worktrees, setWorktrees] = useState<Worktree[]>(initialWorktrees);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [footprintExpanded, setFootprintExpanded] = useState(false);
-  const [filterText, setFilterText] = useState('');
+  const [filterText, setFilterText] = useState("");
   const [filterActive, setFilterActive] = useState(false);
-  const [view, setView] = useState<AppView>('main');
+  const [view, setView] = useState<AppView>("main");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const filteredWorktrees = worktrees.filter((wt) => {
     if (!filterText) return true;
     const q = filterText.toLowerCase();
-    return (
-      wt.branch.toLowerCase().includes(q)
-    );
+    return wt.branch.toLowerCase().includes(q);
   });
 
   const selectedWorktree = filteredWorktrees[selectedIndex] ?? null;
@@ -50,11 +48,11 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const handleSync = useCallback(async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    flash('syncing...');
+    flash("syncing...");
     try {
       const { worktrees: updated, ghWarning } = await loadWorktrees(repoPath);
       setWorktrees(updated);
-      flash(ghWarning ?? 'synced');
+      flash(ghWarning ?? "synced");
     } catch (err) {
       flash(`sync failed: ${(err as Error).message}`);
     } finally {
@@ -78,9 +76,18 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     flash(`starting ${projectName}...`);
     try {
       await execa(
-        'docker',
-        ['compose', '-p', projectName, '--env-file', '.env.worktree', 'up', '-d', '--build'],
-        { cwd: selectedWorktree.path }
+        "docker",
+        [
+          "compose",
+          "-p",
+          projectName,
+          "--env-file",
+          ".env.worktree",
+          "up",
+          "-d",
+          "--build",
+        ],
+        { cwd: selectedWorktree.path },
       );
       flash(`${projectName} started`);
       await handleSync();
@@ -92,14 +99,25 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const handleDelete = useCallback(async () => {
     if (!selectedWorktree || selectedWorktree.isMain) return;
     try {
-      const { execa } = await import('execa');
+      const { execa } = await import("execa");
       const docker = selectedWorktree.docker;
-      if (docker && docker.state !== 'not started' && docker.state !== 'stopped') {
+      if (
+        docker &&
+        docker.state !== "not started" &&
+        docker.state !== "stopped"
+      ) {
         flash(`stopping docker stack…`);
         try {
           await execa(
-            'docker',
-            ['compose', '-p', docker.projectName, '--env-file', '.env.worktree', 'down'],
+            "docker",
+            [
+              "compose",
+              "-p",
+              docker.projectName,
+              "--env-file",
+              ".env.worktree",
+              "down",
+            ],
             { cwd: selectedWorktree.path },
           );
         } catch {
@@ -107,7 +125,11 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
         }
       }
       flash(`removing ${selectedWorktree.branch}…`);
-      await execa('git', ['worktree', 'remove', '--force', selectedWorktree.path], { cwd: repoPath });
+      await execa(
+        "git",
+        ["worktree", "remove", "--force", selectedWorktree.path],
+        { cwd: repoPath },
+      );
       flash(`removed ${selectedWorktree.branch}`);
       setSelectedIndex(0);
       await handleSync();
@@ -122,9 +144,9 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     flash(`stopping ${projectName}...`);
     try {
       await execa(
-        'docker',
-        ['compose', '-p', projectName, '--env-file', '.env.worktree', 'down'],
-        { cwd: selectedWorktree.path }
+        "docker",
+        ["compose", "-p", projectName, "--env-file", ".env.worktree", "down"],
+        { cwd: selectedWorktree.path },
       );
       flash(`${projectName} stopped`);
       await handleSync();
@@ -137,45 +159,70 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     if (filterActive) {
       if (key.escape) {
         setFilterActive(false);
-        setFilterText('');
+        setFilterText("");
         setSelectedIndex(0);
       }
       return;
     }
 
-    if (view === 'help') {
-      if (key.escape || input === 'q' || input === '?') setView('main');
+    if (view === "help") {
+      if (key.escape || input === "q" || input === "?") setView("main");
       return;
     }
 
-    if (view === 'confirmDelete') {
-      if (input === 'y' || input === 'Y') { setView('main'); void handleDelete(); }
-      else { setView('main'); }
+    if (view === "confirmDelete") {
+      if (input === "y" || input === "Y") {
+        setView("main");
+        void handleDelete();
+      } else {
+        setView("main");
+      }
       return;
     }
 
-    if (input === 'D' && selectedWorktree && !selectedWorktree.isMain) { setView('confirmDelete'); return; }
-    if (input === 'q') { exit(); return; }
-    if (input === '?') { setView('help'); return; }
-    if (input === 's') { void handleSync(); return; }
-    if (input === 'o') { void handleOpenInEditor(); return; }
-    if (input === 'x') { setFootprintExpanded((v) => !v); return; }
-    if (input === '/') { setFilterActive(true); return; }
+    if (input === "D" && selectedWorktree && !selectedWorktree.isMain) {
+      setView("confirmDelete");
+      return;
+    }
+    if (input === "q") {
+      exit();
+      return;
+    }
+    if (input === "?") {
+      setView("help");
+      return;
+    }
+    if (input === "s") {
+      void handleSync();
+      return;
+    }
+    if (input === "o") {
+      void handleOpenInEditor();
+      return;
+    }
+    if (input === "x") {
+      setFootprintExpanded((v) => !v);
+      return;
+    }
+    if (input === "/") {
+      setFilterActive(true);
+      return;
+    }
 
-    if (input === 'u' && selectedWorktree?.docker) {
+    if (input === "u" && selectedWorktree?.docker) {
       void handleDockerUp();
       return;
     }
-    if (input === 'd' && selectedWorktree?.docker) {
+    if (input === "d" && selectedWorktree?.docker) {
       void handleDockerDown();
       return;
     }
 
-    if (key.upArrow || input === 'k') {
+    if (key.upArrow || input === "k") {
       setSelectedIndex((i) => Math.max(0, i - 1));
       setFootprintExpanded(false);
     }
-    if (key.downArrow || input === 'j') {
+    if (key.downArrow || input === "j") {
       setSelectedIndex((i) => Math.min(filteredWorktrees.length - 1, i + 1));
       setFootprintExpanded(false);
     }
@@ -188,25 +235,53 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const footprintHeight = rows - 4 - listHeight;
   const detailHeight = rows - 4;
 
-  if (view === 'help') {
+  if (view === "help") {
     return (
       <Box flexDirection="column" padding={2}>
         <Text color="cyan">{LOGO}</Text>
         <Text> </Text>
-        <Text bold color="cyan">Keyboard Shortcuts</Text>
+        <Text bold color="cyan">
+          Keyboard Shortcuts
+        </Text>
         <Text> </Text>
-        <Text><Text color="cyan">↑/k</Text>     <Text color="gray">move up</Text></Text>
-        <Text><Text color="cyan">↓/j</Text>     <Text color="gray">move down</Text></Text>
-        <Text><Text color="cyan">s</Text>       <Text color="gray">sync worktrees</Text></Text>
-        <Text><Text color="cyan">o</Text>       <Text color="gray">open in editor</Text></Text>
-        <Text><Text color="cyan">u</Text>       <Text color="gray">docker up</Text></Text>
-        <Text><Text color="cyan">d</Text>       <Text color="gray">docker down</Text></Text>
-        <Text><Text color="cyan">D</Text>       <Text color="gray">delete worktree (with confirmation)</Text></Text>
-        <Text><Text color="cyan">x</Text>       <Text color="gray">expand/collapse change footprint</Text></Text>
-        <Text><Text color="cyan">/</Text>       <Text color="gray">filter worktrees</Text></Text>
-        <Text><Text color="cyan">Esc</Text>     <Text color="gray">clear filter</Text></Text>
-        <Text><Text color="cyan">q</Text>       <Text color="gray">quit</Text></Text>
-        <Text><Text color="cyan">?</Text>       <Text color="gray">toggle this help</Text></Text>
+        <Text>
+          <Text color="cyan">↑/k</Text> <Text color="gray">move up</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">↓/j</Text> <Text color="gray">move down</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">s</Text> <Text color="gray">sync worktrees</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">o</Text> <Text color="gray">open in editor</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">u</Text> <Text color="gray">docker up</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">d</Text> <Text color="gray">docker down</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">D</Text>{" "}
+          <Text color="gray">delete worktree (with confirmation)</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">x</Text>{" "}
+          <Text color="gray">expand/collapse change footprint</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">/</Text> <Text color="gray">filter worktrees</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">Esc</Text> <Text color="gray">clear filter</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">q</Text> <Text color="gray">quit</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">?</Text> <Text color="gray">toggle this help</Text>
+        </Text>
         <Text> </Text>
         <Text color="gray">Press any key to close</Text>
       </Box>
@@ -217,9 +292,11 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     <Box flexDirection="column" height={rows}>
       {/* Header */}
       <Box paddingX={1}>
-        <Text bold color="cyan">grove</Text>
+        <Text bold color="cyan">
+          grove
+        </Text>
         <Text color="gray"> · {worktrees.length} worktrees</Text>
-        {statusMessage && <Text color="yellow">  {statusMessage}</Text>}
+        {statusMessage && <Text color="yellow"> {statusMessage}</Text>}
         {isSyncing && <Text color="gray"> (syncing…)</Text>}
       </Box>
 
@@ -258,18 +335,24 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
           onSubmit={() => setFilterActive(false)}
           onEscape={() => {
             setFilterActive(false);
-            setFilterText('');
+            setFilterText("");
           }}
         />
-      ) : view === 'confirmDelete' ? (
+      ) : view === "confirmDelete" ? (
         <Box paddingX={1}>
           <Text color="red">Delete </Text>
-          <Text color="white" bold>{selectedWorktree?.branch}</Text>
+          <Text color="white" bold>
+            {selectedWorktree?.branch}
+          </Text>
           <Text color="red">? </Text>
           <Text color="gray">[ </Text>
-          <Text color="cyan" bold>y</Text>
-          <Text color="gray"> ] yes  [ </Text>
-          <Text color="cyan" bold>any key</Text>
+          <Text color="cyan" bold>
+            y
+          </Text>
+          <Text color="gray"> ] yes [ </Text>
+          <Text color="cyan" bold>
+            any key
+          </Text>
           <Text color="gray"> ] cancel</Text>
         </Box>
       ) : (

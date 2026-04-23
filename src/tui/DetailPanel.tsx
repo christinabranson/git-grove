@@ -1,13 +1,13 @@
-import React from 'react';
-import { Box, Text } from 'ink';
-import type { Worktree, DockerState } from '../types.js';
-import { ChangeFootprintPanel } from './ChangeFootprint.js';
+import React from "react";
+import { Box, Text } from "ink";
+import type { Worktree, DockerState } from "../types.js";
+import { ChangeFootprintPanel } from "./ChangeFootprint.js";
 
 const DOCKER_COLORS: Record<DockerState, string> = {
-  running:       'green',
-  partial:       'yellow',
-  stopped:       'gray',
-  'not started': 'gray',
+  running: "green",
+  partial: "yellow",
+  stopped: "gray",
+  "not started": "gray",
 };
 
 function DockerSection({ worktree }: { worktree: Worktree }) {
@@ -15,24 +15,29 @@ function DockerSection({ worktree }: { worktree: Worktree }) {
   if (!docker) return null;
 
   const color = DOCKER_COLORS[docker.state];
-  const dot = docker.state === 'running' ? '●' : docker.state === 'partial' ? '◐' : '■';
+  const dot =
+    docker.state === "running" ? "●" : docker.state === "partial" ? "◐" : "■";
 
   return (
     <Box flexDirection="column" marginTop={1} paddingX={1}>
-      <Text bold color="gray">docker</Text>
+      <Text bold color="gray">
+        docker
+      </Text>
       <Box>
-        <Text color={color}>{dot} {docker.state}</Text>
+        <Text color={color}>
+          {dot} {docker.state}
+        </Text>
       </Box>
       <Box flexDirection="column">
         {docker.webPort && (
-          <Text color="cyan">  http://localhost:{docker.webPort}</Text>
+          <Text color="cyan"> http://localhost:{docker.webPort}</Text>
         )}
         {docker.localstackPort && (
-          <Text color="cyan">  http://localhost:{docker.localstackPort}</Text>
+          <Text color="cyan"> http://localhost:{docker.localstackPort}</Text>
         )}
       </Box>
-      {docker.dbSchema && <Text color="gray">  schema: {docker.dbSchema}</Text>}
-      {docker.redisDb && <Text color="gray">  redis db: {docker.redisDb}</Text>}
+      {docker.dbSchema && <Text color="gray"> schema: {docker.dbSchema}</Text>}
+      {docker.redisDb && <Text color="gray"> redis db: {docker.redisDb}</Text>}
     </Box>
   );
 }
@@ -43,10 +48,16 @@ function PRSection({ worktree }: { worktree: Worktree }) {
 
   return (
     <Box flexDirection="column" marginTop={1} paddingX={1}>
-      <Text bold color="gray">pull request</Text>
+      <Text bold color="gray">
+        pull request
+      </Text>
       <Text color="cyan">{`\x1b]8;;${pr.url}\x07PR #${pr.number}\x1b]8;;\x07`}</Text>
       <Text color="white">{pr.title}</Text>
-      {pr.approvals > 0 && <Text color="green">✓ {pr.approvals} approval{pr.approvals !== 1 ? 's' : ''}</Text>}
+      {pr.approvals > 0 && (
+        <Text color="green">
+          ✓ {pr.approvals} approval{pr.approvals !== 1 ? "s" : ""}
+        </Text>
+      )}
       {pr.reviewRequested && <Text color="yellow">review requested</Text>}
     </Box>
   );
@@ -59,7 +70,12 @@ interface DetailPanelProps {
   footprintExpanded: boolean;
 }
 
-export function DetailPanel({ worktree, width, height, footprintExpanded }: DetailPanelProps) {
+export function DetailPanel({
+  worktree,
+  width,
+  height,
+  footprintExpanded,
+}: DetailPanelProps) {
   if (!worktree) {
     return (
       <Box
@@ -85,11 +101,16 @@ export function DetailPanel({ worktree, width, height, footprintExpanded }: Deta
     >
       <Box paddingX={1} flexDirection="column">
         <Box>
-          <Text bold color="cyan">{worktree.branch}</Text>
+          <Text bold color="cyan">
+            {worktree.branch}
+          </Text>
           {worktree.isMain && <Text color="gray"> (main)</Text>}
         </Box>
         {worktree.baseBranch && !worktree.isMain && (
-          <Text color="gray" dimColor>  off {worktree.baseBranch}</Text>
+          <Text color="gray" dimColor>
+            {" "}
+            off {worktree.baseBranch}
+          </Text>
         )}
       </Box>
 
@@ -100,7 +121,10 @@ export function DetailPanel({ worktree, width, height, footprintExpanded }: Deta
         <Box flexDirection="column" marginTop={1} paddingX={1}>
           <Text bold color="gray">
             changes
-            <Text color="gray" dimColor> (x to expand)</Text>
+            <Text color="gray" dimColor>
+              {" "}
+              (x to expand)
+            </Text>
           </Text>
           <ChangeFootprintPanel
             footprint={worktree.changeFootprint}

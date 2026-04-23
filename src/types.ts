@@ -1,4 +1,4 @@
-export type DockerState = 'running' | 'partial' | 'stopped' | 'not started';
+export type DockerState = "running" | "partial" | "stopped" | "not started";
 
 export interface DockerInfo {
   state: DockerState;
@@ -24,7 +24,7 @@ export interface PRInfo {
   number: number;
   title: string;
   url: string;
-  state: 'open' | 'closed' | 'merged';
+  state: "open" | "closed" | "merged";
   approvals: number;
   reviewRequested: boolean;
   youCommented: boolean;
@@ -57,16 +57,16 @@ export interface GroveEnvironment {
     port?: number;
   };
   db?: {
-    mode: 'shared' | 'local' | 'unknown';
+    mode: "shared" | "local" | "unknown";
   };
   metadata: {
-    source: 'grove' | 'inferred' | 'fallback';
+    source: "grove" | "inferred" | "fallback";
     provider: string;
   };
 }
 
 export interface GroveConfigProvider {
-  type: 'docker-compose' | 'node-scripts' | 'custom-shell';
+  type: "docker-compose" | "node-scripts" | "custom-shell";
   service?: string;
   command?: string;
 }
@@ -88,9 +88,9 @@ export interface GroveConfigNaming {
   /** DB schema name. Default: "${project}_${branch_safe}" */
   dbSchema?: string;
   /** Web port. "auto" finds a free port at spin time. Default: "auto" */
-  webPort?: number | 'auto';
+  webPort?: number | "auto";
   /** API / secondary service port. Default: "auto" */
-  apiPort?: number | 'auto';
+  apiPort?: number | "auto";
 }
 
 export interface GroveConfig {

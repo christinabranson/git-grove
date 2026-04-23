@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, Text } from 'ink';
-import TextInput from 'ink-text-input';
+import React from "react";
+import { Box, Text } from "ink";
+import TextInput from "ink-text-input";
 
 interface FilterBarProps {
   value: string;
@@ -19,7 +19,7 @@ export function FilterBar({ value, onChange, onSubmit }: FilterBarProps) {
         onSubmit={onSubmit}
         placeholder="filter by branch, status..."
       />
-      <Text color="gray">  (Esc to clear)</Text>
+      <Text color="gray"> (Esc to clear)</Text>
     </Box>
   );
 }

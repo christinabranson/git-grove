@@ -1,11 +1,13 @@
-import React from 'react';
-import { Box, Text } from 'ink';
-import type { Worktree } from '../types.js';
+import React from "react";
+import { Box, Text } from "ink";
+import type { Worktree } from "../types.js";
 
 function PRLabel({ worktree }: { worktree: Worktree }) {
   if (!worktree.pr) return null;
   const { number, url } = worktree.pr;
-  return <Text color="cyan">{` \x1b]8;;${url}\x07PR #${number}\x1b]8;;\x07`}</Text>;
+  return (
+    <Text color="cyan">{` \x1b]8;;${url}\x07PR #${number}\x1b]8;;\x07`}</Text>
+  );
 }
 
 function ChangesLabel({ worktree }: { worktree: Worktree }) {
@@ -21,20 +23,20 @@ interface WorktreeRowProps {
 }
 
 function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
-  const prefix = isSelected ? '▶ ' : '  ';
-  const branchColor = worktree.isMain ? 'blue' : 'white';
+  const prefix = isSelected ? "▶ " : "  ";
+  const branchColor = worktree.isMain ? "blue" : "white";
 
   // Truncate branch name to fit
   const maxBranchLen = width - 18;
   const branch =
     worktree.branch.length > maxBranchLen
-      ? worktree.branch.slice(0, maxBranchLen - 1) + '…'
+      ? worktree.branch.slice(0, maxBranchLen - 1) + "…"
       : worktree.branch.padEnd(maxBranchLen);
 
   return (
     <Box flexDirection="column">
       <Box>
-        <Text bold={isSelected} color={isSelected ? 'cyan' : undefined}>
+        <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
           {prefix}
         </Text>
         <Text color={branchColor} bold={isSelected}>
@@ -45,7 +47,9 @@ function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
         <ChangesLabel worktree={worktree} />
       </Box>
       {worktree.baseBranch && !worktree.isMain && (
-        <Text color="gray" dimColor>{'     '}off {worktree.baseBranch}</Text>
+        <Text color="gray" dimColor>
+          {"     "}off {worktree.baseBranch}
+        </Text>
       )}
     </Box>
   );
@@ -58,7 +62,12 @@ interface WorktreeListProps {
   height: number;
 }
 
-export function WorktreeList({ worktrees, selectedIndex, width, height }: WorktreeListProps) {
+export function WorktreeList({
+  worktrees,
+  selectedIndex,
+  width,
+  height,
+}: WorktreeListProps) {
   // Compute scroll window
   const visibleCount = height - 2; // account for border
   const start = Math.max(0, selectedIndex - Math.floor(visibleCount / 2));
@@ -74,7 +83,9 @@ export function WorktreeList({ worktrees, selectedIndex, width, height }: Worktr
       borderColor="gray"
     >
       <Box paddingX={1}>
-        <Text bold color="gray">worktrees</Text>
+        <Text bold color="gray">
+          worktrees
+        </Text>
       </Box>
       {visible.map((wt, idx) => (
         <WorktreeRow

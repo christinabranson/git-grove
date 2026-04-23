@@ -1,20 +1,20 @@
-import { execa } from 'execa';
-import { existsSync } from 'fs';
+import { execa } from "execa";
+import { existsSync } from "fs";
 
-const EDITOR_CANDIDATES = ['code', 'cursor', 'windsurf', 'vim', 'nano'];
+const EDITOR_CANDIDATES = ["code", "cursor", "windsurf", "vim", "nano"];
 
 // macOS app bundle CLI paths for editors that may not have registered `code` in PATH
 const MACOS_APP_PATHS: Partial<Record<string, string>> = {
-  code:     '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
-  cursor:   '/Applications/Cursor.app/Contents/Resources/app/bin/cursor',
-  windsurf: '/Applications/Windsurf.app/Contents/Resources/app/bin/windsurf',
+  code: "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+  cursor: "/Applications/Cursor.app/Contents/Resources/app/bin/cursor",
+  windsurf: "/Applications/Windsurf.app/Contents/Resources/app/bin/windsurf",
 };
 
 /** Returns the resolved full path for a binary, or null if not found. */
 async function resolveBinPath(bin: string): Promise<string | null> {
   // 1. Try PATH first
   try {
-    const { stdout } = await execa('which', [bin]);
+    const { stdout } = await execa("which", [bin]);
     const p = stdout.trim();
     if (p) return p;
   } catch {
@@ -63,12 +63,18 @@ export async function resolveEditor(
 /** Display name for an editor binary — shown in flash messages. */
 export function editorDisplayName(bin: string): string {
   switch (bin) {
-    case 'code':     return 'VS Code';
-    case 'cursor':   return 'Cursor';
-    case 'windsurf': return 'Windsurf';
-    case 'vim':      return 'vim';
-    case 'nano':     return 'nano';
-    default:         return bin;
+    case "code":
+      return "VS Code";
+    case "cursor":
+      return "Cursor";
+    case "windsurf":
+      return "Windsurf";
+    case "vim":
+      return "vim";
+    case "nano":
+      return "nano";
+    default:
+      return bin;
   }
 }
 
@@ -82,12 +88,18 @@ export async function openInEditor(
   groveConfigEditor?: string,
 ): Promise<string> {
   const editor = await resolveEditor(groveConfigEditor);
-  if (!editor) throw new Error('no editor found — set $VISUAL, $EDITOR, or add "editor" to .grove/config.json');
+  if (!editor)
+    throw new Error(
+      'no editor found — set $VISUAL, $EDITOR, or add "editor" to .grove/config.json',
+    );
 
-  const isGui = editor.bin === 'code' || editor.bin === 'cursor' || editor.bin === 'windsurf';
-  const args = isGui ? ['-n', targetPath] : [targetPath];
+  const isGui =
+    editor.bin === "code" ||
+    editor.bin === "cursor" ||
+    editor.bin === "windsurf";
+  const args = isGui ? ["-n", targetPath] : [targetPath];
 
   // Use the resolved full path so spawning succeeds regardless of child process PATH
-  await execa(editor.path, args, { stdio: 'ignore' });
+  await execa(editor.path, args, { stdio: "ignore" });
   return editorDisplayName(editor.bin);
 }

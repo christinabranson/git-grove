@@ -1,14 +1,17 @@
-import type { GroveProvider } from './types.js';
-import type { GroveEnvironment, GroveConfig } from '../types.js';
-import { DockerComposeProvider } from './docker-compose.js';
-import { NodeScriptsProvider } from './node-scripts.js';
-import { loadGroveConfig } from '../data/groveConfig.js';
-import { detectProject } from '../setup/detect.js';
+import type { GroveProvider } from "./types.js";
+import type { GroveEnvironment, GroveConfig } from "../types.js";
+import { DockerComposeProvider } from "./docker-compose.js";
+import { NodeScriptsProvider } from "./node-scripts.js";
+import { loadGroveConfig } from "../data/groveConfig.js";
+import { detectProject } from "../setup/detect.js";
 
 // Minimal fallback when no environment can be started automatically
 class FallbackProvider implements GroveProvider {
-  readonly name = 'fallback';
-  constructor(private readonly worktreePath: string, private readonly envName: string) {}
+  readonly name = "fallback";
+  constructor(
+    private readonly worktreePath: string,
+    private readonly envName: string,
+  ) {}
 
   async start(): Promise<GroveEnvironment> {
     return this._env();
@@ -22,7 +25,7 @@ class FallbackProvider implements GroveProvider {
     return {
       name: this.envName,
       worktreePath: this.worktreePath,
-      metadata: { source: 'fallback', provider: 'fallback' },
+      metadata: { source: "fallback", provider: "fallback" },
     };
   }
 }
@@ -52,12 +55,21 @@ export async function discoverProvider(
   // 2. Docker Compose — use detection output, no redundant filesystem checks
   if (detection.hasDockerCompose) {
     // Pass the first identified app service as a hint; providers handle absent hints gracefully
-    return new DockerComposeProvider(worktreePath, envName, detection.appServices[0]);
+    return new DockerComposeProvider(
+      worktreePath,
+      envName,
+      detection.appServices[0],
+    );
   }
 
   // 3. Node-based project — use detected framework for script/port resolution
   if (detection.hasPackageJson) {
-    return new NodeScriptsProvider(worktreePath, envName, 'dev', detection.framework ?? undefined);
+    return new NodeScriptsProvider(
+      worktreePath,
+      envName,
+      "dev",
+      detection.framework ?? undefined,
+    );
   }
 
   // 4. Terminal fallback — reports environment as unknown, takes no action
@@ -77,10 +89,18 @@ function resolveFromConfig(
   const [, providerConfig] = entries[0];
 
   switch (providerConfig.type) {
-    case 'docker-compose':
-      return new DockerComposeProvider(worktreePath, envName, providerConfig.service);
-    case 'node-scripts':
-      return new NodeScriptsProvider(worktreePath, envName, providerConfig.command ?? 'dev');
+    case "docker-compose":
+      return new DockerComposeProvider(
+        worktreePath,
+        envName,
+        providerConfig.service,
+      );
+    case "node-scripts":
+      return new NodeScriptsProvider(
+        worktreePath,
+        envName,
+        providerConfig.command ?? "dev",
+      );
     default:
       return new FallbackProvider(worktreePath, envName);
   }

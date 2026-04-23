@@ -1,41 +1,66 @@
-import React from 'react';
-import { vi, describe, test, expect } from 'vitest';
-import { render } from './render-for-test.js';
-import { FilterBar } from './FilterBar.js';
+import React from "react";
+import { vi, describe, test, expect } from "vitest";
+import { render } from "./render-for-test.js";
+import { FilterBar } from "./FilterBar.js";
 
-describe('FilterBar', () => {
+describe("FilterBar", () => {
   test('renders the "/" prefix', () => {
     const { lastFrame } = render(
-      <FilterBar value="" onChange={vi.fn()} onSubmit={vi.fn()} onEscape={vi.fn()} />
+      <FilterBar
+        value=""
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onEscape={vi.fn()}
+      />,
     );
-    expect(lastFrame()).toContain('/');
+    expect(lastFrame()).toContain("/");
   });
 
-  test('shows current filter value', () => {
+  test("shows current filter value", () => {
     const { lastFrame } = render(
-      <FilterBar value="feature" onChange={vi.fn()} onSubmit={vi.fn()} onEscape={vi.fn()} />
+      <FilterBar
+        value="feature"
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onEscape={vi.fn()}
+      />,
     );
-    expect(lastFrame()).toContain('feature');
+    expect(lastFrame()).toContain("feature");
   });
 
-  test('shows Esc hint text', () => {
+  test("shows Esc hint text", () => {
     const { lastFrame } = render(
-      <FilterBar value="" onChange={vi.fn()} onSubmit={vi.fn()} onEscape={vi.fn()} />
+      <FilterBar
+        value=""
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onEscape={vi.fn()}
+      />,
     );
-    expect(lastFrame()).toContain('Esc');
+    expect(lastFrame()).toContain("Esc");
   });
 
-  test('shows placeholder text when value is empty', () => {
+  test("shows placeholder text when value is empty", () => {
     const { lastFrame } = render(
-      <FilterBar value="" onChange={vi.fn()} onSubmit={vi.fn()} onEscape={vi.fn()} />
+      <FilterBar
+        value=""
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onEscape={vi.fn()}
+      />,
     );
-    expect(lastFrame()).toContain('filter by branch, status');
+    expect(lastFrame()).toContain("filter by branch, status");
   });
 
-  test('renders without error when value has special characters', () => {
+  test("renders without error when value has special characters", () => {
     const { lastFrame } = render(
-      <FilterBar value="feat/auth-v2" onChange={vi.fn()} onSubmit={vi.fn()} onEscape={vi.fn()} />
+      <FilterBar
+        value="feat/auth-v2"
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onEscape={vi.fn()}
+      />,
     );
-    expect(lastFrame()).toContain('feat/auth-v2');
+    expect(lastFrame()).toContain("feat/auth-v2");
   });
 });

@@ -13,9 +13,9 @@
  * pending writes via a resolved Promise (microtask) — by which time the
  * listener is in place.
  */
-import { render as inkRender } from 'ink';
-import { EventEmitter } from 'node:events';
-import type { ReactElement } from 'react';
+import { render as inkRender } from "ink";
+import { EventEmitter } from "node:events";
+import type { ReactElement } from "react";
 
 class PatchedStdout extends EventEmitter {
   frames: string[] = [];
@@ -58,7 +58,7 @@ class PatchedStdin extends EventEmitter {
   write = (data: string) => {
     if (this._rawModeEnabled) {
       this._buffer.push(data);
-      this.emit('readable');
+      this.emit("readable");
     } else {
       // Effects haven't run yet — queue for delivery after ref() is called.
       this._pending.push(data);
@@ -72,7 +72,7 @@ class PatchedStdin extends EventEmitter {
   private _flush() {
     for (const data of this._pending) {
       this._buffer.push(data);
-      this.emit('readable');
+      this.emit("readable");
     }
     this._pending = [];
   }

@@ -1,9 +1,9 @@
-import { execa } from 'execa';
-import { readFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
-import type { GroveProvider } from './types.js';
-import type { GroveEnvironment } from '../types.js';
+import { execa } from "execa";
+import { readFile } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
+import type { GroveProvider } from "./types.js";
+import type { GroveEnvironment } from "../types.js";
 
 interface EnvAgentVars {
   projectName: string;
@@ -13,48 +13,69 @@ interface EnvAgentVars {
   dbSchema?: string;
 }
 
-async function parseEnvAgentAsync(worktreePath: string): Promise<EnvAgentVars | null> {
-  const envPath = path.join(worktreePath, '.env.worktree');
+async function parseEnvAgentAsync(
+  worktreePath: string,
+): Promise<EnvAgentVars | null> {
+  const envPath = path.join(worktreePath, ".env.worktree");
   if (!existsSync(envPath)) return null;
 
-  const raw = await readFile(envPath, 'utf-8');
+  const raw = await readFile(envPath, "utf-8");
   const env: Record<string, string> = {};
-  for (const line of raw.split('\n')) {
+  for (const line of raw.split("\n")) {
     const match = line.match(/^([A-Z_]+)=(.*)$/);
     if (match) env[match[1]] = match[2];
   }
 
   return {
-    projectName: env['COMPOSE_PROJECT_NAME'] || path.basename(worktreePath),
-    webPort: env['WEB_PORT'] ? parseInt(env['WEB_PORT'], 10) : undefined,
-    localstackPort: env['LOCALSTACK_PORT'] ? parseInt(env['LOCALSTACK_PORT'], 10) : undefined,
-    redisDb: env['REDIS_DB'],
-    dbSchema: env['DB_SCHEMA'],
+    projectName: env["COMPOSE_PROJECT_NAME"] || path.basename(worktreePath),
+    webPort: env["WEB_PORT"] ? parseInt(env["WEB_PORT"], 10) : undefined,
+    localstackPort: env["LOCALSTACK_PORT"]
+      ? parseInt(env["LOCALSTACK_PORT"], 10)
+      : undefined,
+    redisDb: env["REDIS_DB"],
+    dbSchema: env["DB_SCHEMA"],
   };
 }
 
-async function getDockerState(projectName: string): Promise<'running' | 'partial' | 'stopped' | 'not started'> {
+async function getDockerState(
+  projectName: string,
+): Promise<"running" | "partial" | "stopped" | "not started"> {
   try {
-    const { stdout } = await execa('docker', ['compose', '-p', projectName, 'ps', '--format', 'json']);
+    const { stdout } = await execa("docker", [
+      "compose",
+      "-p",
+      projectName,
+      "ps",
+      "--format",
+      "json",
+    ]);
     const containers = stdout
       .trim()
-      .split('\n')
+      .split("\n")
       .filter(Boolean)
-      .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+      .map((l) => {
+        try {
+          return JSON.parse(l);
+        } catch {
+          return null;
+        }
+      })
       .filter(Boolean);
 
-    if (containers.length === 0) return 'not started';
-    const running = containers.filter((c: Record<string, unknown>) => c['State'] === 'running').length;
-    if (running === containers.length) return 'running';
-    if (running > 0) return 'partial';
-    return 'stopped';
+    if (containers.length === 0) return "not started";
+    const running = containers.filter(
+      (c: Record<string, unknown>) => c["State"] === "running",
+    ).length;
+    if (running === containers.length) return "running";
+    if (running > 0) return "partial";
+    return "stopped";
   } catch {
-    return 'not started';
+    return "not started";
   }
 }
 
 export class DockerComposeProvider implements GroveProvider {
-  readonly name = 'docker-compose';
+  readonly name = "docker-compose";
 
   constructor(
     private readonly worktreePath: string,
@@ -67,20 +88,29 @@ export class DockerComposeProvider implements GroveProvider {
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
 
     await execa(
-      'docker',
-      ['compose', '-p', projectName, '--env-file', '.env.worktree', 'up', '-d', '--build'],
+      "docker",
+      [
+        "compose",
+        "-p",
+        projectName,
+        "--env-file",
+        ".env.worktree",
+        "up",
+        "-d",
+        "--build",
+      ],
       { cwd: this.worktreePath },
     );
 
-    return this._buildEnv(vars, 'running');
+    return this._buildEnv(vars, "running");
   }
 
   async stop(): Promise<void> {
     const vars = await parseEnvAgentAsync(this.worktreePath);
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
     await execa(
-      'docker',
-      ['compose', '-p', projectName, '--env-file', '.env.worktree', 'down'],
+      "docker",
+      ["compose", "-p", projectName, "--env-file", ".env.worktree", "down"],
       { cwd: this.worktreePath },
     );
   }
@@ -99,17 +129,20 @@ export class DockerComposeProvider implements GroveProvider {
     const env: GroveEnvironment = {
       name: this.envName,
       worktreePath: this.worktreePath,
-      metadata: { source: 'grove', provider: 'docker-compose' },
+      metadata: { source: "grove", provider: "docker-compose" },
     };
 
     if (vars?.webPort) {
       env.web = { url: `http://localhost:${vars.webPort}`, port: vars.webPort };
     }
     if (vars?.localstackPort) {
-      env.api = { url: `http://localhost:${vars.localstackPort}`, port: vars.localstackPort };
+      env.api = {
+        url: `http://localhost:${vars.localstackPort}`,
+        port: vars.localstackPort,
+      };
     }
     if (vars?.dbSchema) {
-      env.db = { mode: 'local' };
+      env.db = { mode: "local" };
     }
 
     return env;

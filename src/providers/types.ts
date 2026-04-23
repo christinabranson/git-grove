@@ -1,4 +1,4 @@
-import type { GroveEnvironment } from '../types.js';
+import type { GroveEnvironment } from "../types.js";
 
 export interface GroveProvider {
   readonly name: string;

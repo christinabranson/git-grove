@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface Size {
   columns: number;
@@ -18,9 +18,9 @@ export function useTerminalSize(): Size {
         rows: process.stdout.rows ?? 40,
       });
     };
-    process.stdout.on('resize', handler);
+    process.stdout.on("resize", handler);
     return () => {
-      process.stdout.off('resize', handler);
+      process.stdout.off("resize", handler);
     };
   }, []);
 
