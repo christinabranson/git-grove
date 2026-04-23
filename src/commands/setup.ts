@@ -40,8 +40,7 @@ function printDetectionSummary(
       ? chalk.white(detection.framework)
       : chalk.gray("generic Node.js");
     console.log(
-      chalk.green("  ✔") +
-        ` Found package.json — framework: ${frameworkLabel}`,
+      chalk.green("  ✔") + ` Found package.json — framework: ${frameworkLabel}`,
     );
   }
 
