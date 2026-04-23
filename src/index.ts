@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import chalk from 'chalk';
 import { program } from 'commander';
+import { LOGO } from './tui/logo.js';
 import { render } from 'ink';
 import React from 'react';
 import { loadWorktrees, detectRepoRoot, resolveWorktreeRoot } from './data/worktrees.js';
@@ -25,7 +26,7 @@ const pkg = { name: 'grove-wt', version: '0.1.0' };
 program
   .name('grove')
   .description('Terminal-based worktree manager for git repositories')
-  .version(pkg.version);
+  .version(`\n${chalk.cyan(LOGO)}\n\n  v${pkg.version}\n`);
 
 program.hook('preAction', async (_thisCommand, actionCommand) => {
   if (actionCommand.name() === 'setup') return;

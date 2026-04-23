@@ -1,5 +1,17 @@
 # Grove
 
+```
+           ░██   ░██
+                 ░██
+ ░████████ ░██░████████  ░████████ ░██░████  ░███████  ░██    ░██  ░███████
+░██    ░██ ░██   ░██    ░██    ░██ ░███     ░██    ░██ ░██    ░██ ░██    ░██
+░██    ░██ ░██   ░██    ░██    ░██ ░██      ░██    ░██  ░██  ░██  ░█████████
+░██   ░███ ░██   ░██    ░██   ░███ ░██      ░██    ░██   ░██░██   ░██
+ ░█████░██ ░██    ░████  ░█████░██ ░██       ░███████     ░███     ░███████
+       ░██                     ░██
+ ░███████                ░███████
+```
+
 > *See the forest. Manage the trees.*
 
 Grove is a terminal-based mission control for parallel agentic workflows. It wraps git worktrees, dev environment lifecycle, and AI agent sessions into a single keyboard-driven interface — without replacing any of your existing tooling.

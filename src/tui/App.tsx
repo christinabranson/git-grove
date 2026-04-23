@@ -10,6 +10,7 @@ import { CompactFootprint } from './ChangeFootprint.js';
 import { KeybindBar } from './KeybindBar.js';
 import { FilterBar } from './FilterBar.js';
 import { useTerminalSize } from './useTerminalSize.js';
+import { LOGO } from './logo.js';
 
 type AppView = 'main' | 'help' | 'confirmDelete';
 
@@ -190,7 +191,9 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   if (view === 'help') {
     return (
       <Box flexDirection="column" padding={2}>
-        <Text bold color="cyan">Grove — Keyboard Shortcuts</Text>
+        <Text color="cyan">{LOGO}</Text>
+        <Text> </Text>
+        <Text bold color="cyan">Keyboard Shortcuts</Text>
         <Text> </Text>
         <Text><Text color="cyan">↑/k</Text>     <Text color="gray">move up</Text></Text>
         <Text><Text color="cyan">↓/j</Text>     <Text color="gray">move down</Text></Text>
