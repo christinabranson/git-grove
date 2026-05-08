@@ -307,7 +307,12 @@ export async function loadWorktrees(
     fetchPRsByBranch(repoPath),
   ]);
 
-  const cwd = process.cwd();
+  let cwd = "";
+  try {
+    cwd = process.cwd();
+  } catch {
+    // cwd deleted/moved — no worktree will match, isCurrent stays false
+  }
 
   const worktrees = await Promise.all(
     raw.map(async (wt, idx) => {

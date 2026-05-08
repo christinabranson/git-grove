@@ -213,6 +213,38 @@ describe("loadWorktrees", () => {
     expect(worktrees[0].baseBranch).toBe("main");
   });
 
+  test("sets isCurrent=true when cwd matches the worktree path exactly", async () => {
+    vi.spyOn(process, "cwd").mockReturnValue("/repo/main");
+    const { worktrees } = await loadWorktrees("/repo");
+    expect(worktrees[0].isCurrent).toBe(true);
+    expect(worktrees[1].isCurrent).toBe(false);
+    vi.restoreAllMocks();
+  });
+
+  test("sets isCurrent=true when cwd is a subdirectory of the worktree path", async () => {
+    vi.spyOn(process, "cwd").mockReturnValue("/repo/feature/src/components");
+    const { worktrees } = await loadWorktrees("/repo");
+    expect(worktrees[1].isCurrent).toBe(true);
+    expect(worktrees[0].isCurrent).toBe(false);
+    vi.restoreAllMocks();
+  });
+
+  test("sets isCurrent=false for all worktrees when cwd is unrelated", async () => {
+    vi.spyOn(process, "cwd").mockReturnValue("/some/other/directory");
+    const { worktrees } = await loadWorktrees("/repo");
+    expect(worktrees.every((wt) => !wt.isCurrent)).toBe(true);
+    vi.restoreAllMocks();
+  });
+
+  test("sets isCurrent=false for all worktrees when cwd throws", async () => {
+    vi.spyOn(process, "cwd").mockImplementation(() => {
+      throw new Error("no such file or directory");
+    });
+    const { worktrees } = await loadWorktrees("/repo");
+    expect(worktrees.every((wt) => !wt.isCurrent)).toBe(true);
+    vi.restoreAllMocks();
+  });
+
   test("populates changeFootprint when git diff returns output", async () => {
     mockedExeca.mockImplementation(async (cmd: string, args: string[]) => {
       if (cmd === "git" && args[0] === "worktree") {

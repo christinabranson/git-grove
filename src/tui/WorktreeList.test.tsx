@@ -152,6 +152,18 @@ describe("WorktreeList", () => {
     expect(lastFrame()).not.toContain("off");
   });
 
+  test('shows "◀ current" label when isCurrent is true', () => {
+    const wt = makeWorktree({ isCurrent: true, isMain: false, branch: "feature" });
+    const { lastFrame } = renderList([wt]);
+    expect(lastFrame()).toContain("◀ current");
+  });
+
+  test('does not show "◀ current" label when isCurrent is false', () => {
+    const wt = makeWorktree({ isCurrent: false });
+    const { lastFrame } = renderList([wt]);
+    expect(lastFrame()).not.toContain("◀ current");
+  });
+
   test("truncates long branch names to fit width", () => {
     const longBranch = "a".repeat(50);
     const wt = makeWorktree({ branch: longBranch, isMain: false });
