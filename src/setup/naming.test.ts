@@ -54,8 +54,14 @@ describe("expandNaming", () => {
 
   test("defaults ports to auto", () => {
     const result = expandNaming(baseConfig, "main");
+    expect(result.dbPort).toBe("auto");
     expect(result.webPort).toBe("auto");
     expect(result.apiPort).toBe("auto");
+    expect(result.ports).toMatchObject({
+      WEB_PORT: "auto",
+      API_PORT: "auto",
+      DB_PORT: "auto",
+    });
   });
 
   test("expands branch_safe for slash-containing branch", () => {
@@ -85,11 +91,37 @@ describe("expandNaming", () => {
   test("respects explicit port numbers", () => {
     const config: GroveConfig = {
       ...baseConfig,
-      naming: { webPort: 3000, apiPort: 4000 },
+      naming: { dbPort: 5544, webPort: 3000, apiPort: 4000 },
     };
     const result = expandNaming(config, "main");
+    expect(result.dbPort).toBe(5544);
     expect(result.webPort).toBe(3000);
     expect(result.apiPort).toBe(4000);
+    expect(result.ports).toMatchObject({
+      DB_PORT: 5544,
+      WEB_PORT: 3000,
+      API_PORT: 4000,
+    });
+  });
+
+  test("supports arbitrary service ports via naming.ports", () => {
+    const config: GroveConfig = {
+      ...baseConfig,
+      naming: {
+        ports: {
+          REDIS_PORT: "auto",
+          LOCALSTACK_PORT: 4567,
+        },
+      },
+    };
+    const result = expandNaming(config, "main");
+    expect(result.ports).toMatchObject({
+      REDIS_PORT: "auto",
+      LOCALSTACK_PORT: 4567,
+      WEB_PORT: "auto",
+      API_PORT: "auto",
+      DB_PORT: "auto",
+    });
   });
 
   test('falls back to "grove" project name when project is missing from config', () => {
@@ -108,8 +140,14 @@ describe("buildEnvAgent", () => {
     composeProject: "grove-main",
     sharedProject: null,
     dbSchema: "myapp_main",
+    dbPort: 5544,
     webPort: 3000,
     apiPort: 4000,
+    ports: {
+      WEB_PORT: 3000,
+      API_PORT: 4000,
+      DB_PORT: 5544,
+    },
   };
 
   test("includes COMPOSE_PROJECT_NAME", async () => {
@@ -132,6 +170,11 @@ describe("buildEnvAgent", () => {
     expect(result).toContain("DB_SCHEMA=myapp_main");
   });
 
+  test("includes DB_PORT", async () => {
+    const result = await buildEnvAgent(explicitExpanded);
+    expect(result).toContain("DB_PORT=5544");
+  });
+
   test("does not include SHARED_PROJECT_NAME when sharedProject is null", async () => {
     const result = await buildEnvAgent(explicitExpanded);
     expect(result).not.toContain("SHARED_PROJECT_NAME");
@@ -151,16 +194,32 @@ describe("buildEnvAgent", () => {
     expect(result.endsWith("\n")).toBe(true);
   });
 
-  test("uses existingWebPort as starting point when webPort is auto", async () => {
-    // When webPort is 'auto', it calls findFreePort. We test with an explicit port to avoid
-    // network side effects, but verify the logic by using a fixed port.
+  test("includes arbitrary port env keys", async () => {
     const expanded: ExpandedNaming = {
       ...explicitExpanded,
-      webPort: 8080,
-      apiPort: 8081,
+      ports: {
+        ...explicitExpanded.ports,
+        REDIS_PORT: 6381,
+      },
     };
     const result = await buildEnvAgent(expanded);
-    expect(result).toContain("WEB_PORT=8080");
-    expect(result).toContain("API_PORT=8081");
+    expect(result).toContain("REDIS_PORT=6381");
+  });
+
+  test("uses existingWebPort as starting point when webPort is auto", async () => {
+    // Keep WEB/API static in this test so we avoid relying on open-port state.
+    const expanded: ExpandedNaming = {
+      ...explicitExpanded,
+      webPort: 3001,
+      apiPort: 3002,
+      ports: {
+        ...explicitExpanded.ports,
+        WEB_PORT: 3001,
+        API_PORT: 3002,
+      },
+    };
+    const result = await buildEnvAgent(expanded);
+    expect(result).toContain("WEB_PORT=3001");
+    expect(result).toContain("API_PORT=3002");
   });
 });

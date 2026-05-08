@@ -87,6 +87,13 @@ export interface GroveConfigNaming {
   sharedProject?: string;
   /** DB schema name. Default: "${project}_${branch_safe}" */
   dbSchema?: string;
+  /**
+   * Generic host-port mapping to emit into .env.worktree (e.g. WEB_PORT, DB_PORT, REDIS_PORT).
+   * Use "auto" to find a free host port at spin time.
+   */
+  ports?: Record<string, number | "auto">;
+  /** DB host port. "auto" finds a free port at spin time. Default: "auto" */
+  dbPort?: number | "auto";
   /** Web port. "auto" finds a free port at spin time. Default: "auto" */
   webPort?: number | "auto";
   /** API / secondary service port. Default: "auto" */

@@ -5,6 +5,8 @@ import chalk from "chalk";
 import { detectProject } from "../setup/detect.js";
 import { presets, recommendPreset, type PresetName } from "../setup/presets.js";
 import type { GroveConfig } from "../types.js";
+import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
+import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
 
 export interface SetupOptions {
   preset?: PresetName;
@@ -158,6 +160,10 @@ export async function runSetup(
 
   // 3. Generate config
   const config = preset.generate(detection);
+
+  await warnIfHardcodedComposePorts(repoPath, [
+    config.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+  ]);
 
   // 4. Show proposal
   printProposedConfig(config);

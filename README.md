@@ -135,6 +135,12 @@ Proposed .grove/config.json:
   "naming": {
     "composeProject": "grove-${branch_safe}",
     "dbSchema": "my_app_${branch_safe}",
+    "ports": {
+      "WEB_PORT": "auto",
+      "API_PORT": "auto",
+      "DB_PORT": "auto"
+    },
+    "dbPort": "auto",
     "webPort": "auto",
     "apiPort": "auto"
   },
@@ -187,9 +193,13 @@ Example:
 
 - `"composeProject": "grove-${branch_safe}"` → `grove-feat-auth-refresh`
 - `"dbSchema": "${project}_${branch_safe}"` → `myapp_feat_auth_refresh`
+- `"ports": { "REDIS_PORT": "auto" }` → Grove allocates a free host port and writes `REDIS_PORT=<port>`
+- `"dbPort": "auto"` → Grove finds a free DB host port at spin time
 - `"webPort": "auto"` → Grove finds a free port at spin time
 
 This means you never manually assign ports or project names. `grove start` generates the `.env.worktree` file for each new worktree automatically.
+
+For arbitrary services (redis, localstack, mailhog, etc.), prefer `naming.ports` so you are not limited to built-in keys.
 
 ---
 
@@ -207,12 +217,23 @@ If your project uses Docker Compose and you want Grove to manage per-worktree st
 # .env.worktree
 COMPOSE_PROJECT_NAME=my-app-feat-auth   # used as `docker compose -p` value
 WEB_PORT=8081                           # primary app URL (shown in TUI, used by agents)
+DB_PORT=5433                            # postgres host port for this worktree
+REDIS_PORT=6380                         # redis host port for this worktree (optional)
 LOCALSTACK_PORT=4567                    # optional secondary service
 REDIS_DB=1                              # informational — shown in TUI card
 DB_SCHEMA=my_app_feat_auth             # informational — shown in TUI card
 ```
 
 Grove reads this file to discover port bindings and the Compose project name. It never writes to it. Each worktree gets its own `.env.worktree` with unique ports and a unique `COMPOSE_PROJECT_NAME` to keep stacks isolated.
+
+For Postgres or other host-bound services, make sure your compose file uses the generated env var in its `ports` mapping, for example:
+
+```yaml
+services:
+  db:
+    ports:
+      - "${DB_PORT:-5432}:5432"
+```
 
 Add `.env.worktree` to your `.gitignore`:
 
@@ -242,6 +263,14 @@ For full control over how Grove manages environments, add `.grove/config.json` t
     "composeProject": "my-app-${branch_safe}",
     "sharedProject": "my-app-shared",
     "dbSchema": "my_app_${branch_safe}",
+    "ports": {
+      "WEB_PORT": "auto",
+      "API_PORT": "auto",
+      "DB_PORT": "auto",
+      "REDIS_PORT": "auto",
+      "LOCALSTACK_PORT": "auto"
+    },
+    "dbPort": "auto",
     "webPort": "auto",
     "apiPort": "auto"
   },
@@ -369,6 +398,7 @@ When `naming.sharedProject` is configured, the generated `.env.worktree` looks l
 COMPOSE_PROJECT_NAME=my-app-feat-auth
 WEB_PORT=8081
 API_PORT=8082
+DB_PORT=5433
 DB_SCHEMA=my_app_feat_auth
 SHARED_PROJECT_NAME=my-app-shared
 ```

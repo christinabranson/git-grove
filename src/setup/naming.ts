@@ -28,9 +28,19 @@ export interface ExpandedNaming {
   composeProject: string;
   sharedProject: string | null;
   dbSchema: string;
+  dbPort: number | "auto";
   webPort: number | "auto";
   apiPort: number | "auto";
+  ports: Record<string, number | "auto">;
 }
+
+const DEFAULT_PORT_STARTS: Record<string, number> = {
+  WEB_PORT: 8080,
+  API_PORT: 8081,
+  DB_PORT: 5432,
+  REDIS_PORT: 6379,
+  LOCALSTACK_PORT: 4566,
+};
 
 /**
  * Expand naming templates from .grove/config.json for a specific branch.
@@ -48,6 +58,10 @@ export function expandNaming(
 
   const naming = config.naming ?? {};
 
+  const dbPort = naming.dbPort ?? "auto";
+  const webPort = naming.webPort ?? "auto";
+  const apiPort = naming.apiPort ?? "auto";
+
   return {
     composeProject: expandTemplate(
       naming.composeProject ?? "grove-${branch_safe}",
@@ -60,8 +74,15 @@ export function expandNaming(
       naming.dbSchema ?? "${project}_${branch_safe}",
       vars,
     ),
-    webPort: naming.webPort ?? "auto",
-    apiPort: naming.apiPort ?? "auto",
+    dbPort,
+    webPort,
+    apiPort,
+    ports: {
+      WEB_PORT: webPort,
+      API_PORT: apiPort,
+      DB_PORT: dbPort,
+      ...(naming.ports ?? {}),
+    },
   };
 }
 
@@ -88,6 +109,26 @@ export async function findFreePort(start: number): Promise<number> {
   throw new Error(`Could not find a free port starting from ${start}`);
 }
 
+async function findFreePortWithReserved(
+  start: number,
+  reserved: Set<number>,
+): Promise<number> {
+  for (let p = start; p < start + 200; p++) {
+    if (!reserved.has(p) && (await isPortFree(p))) return p;
+  }
+  throw new Error(`Could not find a free port starting from ${start}`);
+}
+
+function inferStartPort(
+  key: string,
+  resolvedPorts: Record<string, number>,
+): number {
+  if (key === "API_PORT" && resolvedPorts["WEB_PORT"]) {
+    return resolvedPorts["WEB_PORT"] + 1;
+  }
+  return DEFAULT_PORT_STARTS[key] ?? 10000;
+}
+
 /**
  * Build a .env.worktree file body from expanded naming values.
  * The caller is responsible for writing it to disk.
@@ -96,20 +137,42 @@ export async function buildEnvAgent(
   expanded: ExpandedNaming,
   existingWebPort?: number,
 ): Promise<string> {
-  const webPort =
-    expanded.webPort === "auto"
-      ? await findFreePort(existingWebPort ?? 8080)
-      : expanded.webPort;
+  const portSpecs: Record<string, number | "auto"> = {
+    WEB_PORT: expanded.webPort,
+    API_PORT: expanded.apiPort,
+    DB_PORT: expanded.dbPort,
+    ...expanded.ports,
+  };
 
-  const apiPort =
-    expanded.apiPort === "auto"
-      ? await findFreePort(webPort + 1)
-      : expanded.apiPort;
+  const reserved = new Set<number>();
+  const resolvedPorts: Record<string, number> = {};
+
+  for (const [key, value] of Object.entries(portSpecs)) {
+    if (typeof value === "number") {
+      if (reserved.has(value)) {
+        throw new Error(`Duplicate port configured: ${value}`);
+      }
+      reserved.add(value);
+      resolvedPorts[key] = value;
+      continue;
+    }
+
+    const start =
+      key === "WEB_PORT"
+        ? (existingWebPort ?? DEFAULT_PORT_STARTS.WEB_PORT)
+        : inferStartPort(key, resolvedPorts);
+    const resolved = await findFreePortWithReserved(start, reserved);
+    reserved.add(resolved);
+    resolvedPorts[key] = resolved;
+  }
+
+  const portLines = Object.entries(resolvedPorts).map(
+    ([key, value]) => `${key}=${value}`,
+  );
 
   const lines = [
     `COMPOSE_PROJECT_NAME=${expanded.composeProject}`,
-    `WEB_PORT=${webPort}`,
-    `API_PORT=${apiPort}`,
+    ...portLines,
     `DB_SCHEMA=${expanded.dbSchema}`,
     ...(expanded.sharedProject
       ? [`SHARED_PROJECT_NAME=${expanded.sharedProject}`]

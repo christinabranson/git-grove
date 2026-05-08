@@ -43,6 +43,12 @@ export const presets: Record<PresetName, Preset> = {
         naming: {
           composeProject: "grove-${branch_safe}",
           dbSchema: "${project}_${branch_safe}",
+          ports: {
+            WEB_PORT: "auto",
+            API_PORT: "auto",
+            DB_PORT: "auto",
+          },
+          dbPort: "auto",
           webPort: "auto",
           apiPort: "auto",
         },

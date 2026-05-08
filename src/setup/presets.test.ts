@@ -111,6 +111,12 @@ describe("presets.docker.generate", () => {
     const { naming } = presets.docker.generate(makeDetection());
     expect(naming?.composeProject).toBe("grove-${branch_safe}");
     expect(naming?.dbSchema).toBe("${project}_${branch_safe}");
+    expect(naming?.ports).toMatchObject({
+      WEB_PORT: "auto",
+      API_PORT: "auto",
+      DB_PORT: "auto",
+    });
+    expect(naming?.dbPort).toBe("auto");
     expect(naming?.webPort).toBe("auto");
     expect(naming?.apiPort).toBe("auto");
   });

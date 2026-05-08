@@ -23,6 +23,7 @@ import { loadGroveConfig } from "./data/groveConfig.js";
 import { expandNaming, buildEnvAgent } from "./setup/naming.js";
 import { runSetup } from "./commands/setup.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
+import { warnIfHardcodedComposePorts } from "./utils/hardcodedPortsCheck.js";
 import type { PresetName } from "./setup/presets.js";
 
 const pkg = { name: "grove-wt", version: "0.1.0" };
@@ -168,6 +169,9 @@ program
       try {
         const repoPath = await detectRepoRoot();
         const repoGroveConfig = await loadGroveConfig(repoPath);
+        await warnIfHardcodedComposePorts(repoPath, [
+          repoGroveConfig?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+        ]);
         const worktreeRoot = resolveWorktreeRoot(
           repoPath,
           repoGroveConfig?.worktrees?.root,
@@ -340,6 +344,10 @@ docker
     const { execa } = await import("execa");
     try {
       const repoPath = await detectRepoRoot();
+      const config = await loadGroveConfig(repoPath);
+      await warnIfHardcodedComposePorts(repoPath, [
+        config?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+      ]);
       const { worktrees } = await loadWorktrees(repoPath);
       const wt = branch
         ? worktrees.find(
@@ -491,6 +499,9 @@ shared
     try {
       const repoPath = await detectRepoRoot();
       const config = await loadGroveConfig(repoPath);
+      await warnIfHardcodedComposePorts(repoPath, [
+        config?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+      ]);
       const info = resolveSharedStack(repoPath, config);
       if (!info) {
         console.error(
