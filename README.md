@@ -66,6 +66,34 @@ If any of these are missing, the related features won't activate — no crash, b
 
 Grove resolves your editor automatically for `grove open` / `o` key — no configuration required. It checks, in order: the `editor` field in `.grove/config.json`, the `$VISUAL` environment variable, `$EDITOR`, then scans for `code`, `cursor`, `windsurf`, `vim`, and `nano`. On macOS it also checks standard app bundle locations, so VS Code works even if `code` isn't in your PATH.
 
+### Local machine setup
+
+Grove generates per-worktree files that should never be committed. Add them to your **global** gitignore so you don't need to touch each repo's `.gitignore`:
+
+```bash
+# Open (or create) your global gitignore
+git config --global core.excludesfile    # shows the current path, e.g. ~/.gitignore_global
+
+# Add the grove entries
+echo '.grove/' >> ~/.gitignore_global
+echo '.env.worktree' >> ~/.gitignore_global
+```
+
+If you haven't set a global gitignore yet:
+
+```bash
+echo '.grove/' >> ~/.gitignore_global
+echo '.env.worktree' >> ~/.gitignore_global
+git config --global core.excludesfile ~/.gitignore_global
+```
+
+| File / Dir       | What it is                                              |
+| ---------------- | ------------------------------------------------------- |
+| `.grove/`        | Per-worktree metadata (base branch, local config)       |
+| `.env.worktree`  | Your port assignments and Compose project name          |
+
+These are machine-local and worktree-local — committing them would break other developers' environments.
+
 ---
 
 ## Preparing a repo for Grove
@@ -492,13 +520,15 @@ grove
 | --------- | ------------------------------------------------------ |
 | `↑` / `k` | Move up in worktree list                               |
 | `↓` / `j` | Move down                                              |
+| `n`       | New worktree — prompts for branch name and base branch |
 | `s`       | Sync — refresh all manifests, git status, docker state |
 | `o`       | Open selected worktree in editor                       |
 | `u`       | Docker up (selected worktree)                          |
 | `d`       | Docker down (selected worktree)                        |
+| `D`       | Delete selected worktree (with confirmation)           |
 | `x`       | Expand / collapse change footprint                     |
 | `/`       | Filter worktrees by branch name or agent state         |
-| `Esc`     | Clear filter                                           |
+| `Esc`     | Clear filter / cancel prompt                           |
 | `?`       | Toggle keyboard shortcut help                          |
 | `q`       | Quit                                                   |
 
