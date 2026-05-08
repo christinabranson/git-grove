@@ -13,6 +13,7 @@ interface Key {
 
 export function KeybindBar({ worktree }: KeybindBarProps) {
   const keys: Key[] = [
+    { key: "n", label: "new" },
     { key: "s", label: "sync" },
     { key: "?", label: "help" },
     { key: "q", label: "quit" },

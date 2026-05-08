@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useInput, useApp } from "ink";
+import TextInput from "ink-text-input";
 import { execa } from "execa";
 import type { Worktree } from "../types.js";
 import { openInEditor } from "./editor.js";
-import { loadWorktrees } from "../data/worktrees.js";
+import { loadWorktrees, detectDefaultBranch, resolveWorktreeRoot } from "../data/worktrees.js";
 import { WorktreeList } from "./WorktreeList.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { CompactFootprint } from "./ChangeFootprint.js";
@@ -12,7 +13,8 @@ import { FilterBar } from "./FilterBar.js";
 import { useTerminalSize } from "./useTerminalSize.js";
 import { LOGO } from "./logo.js";
 
-type AppView = "main" | "help" | "confirmDelete";
+type AppView = "main" | "help" | "confirmDelete" | "newWorktree";
+type NewWorktreeStep = "name" | "base";
 
 interface AppProps {
   repoPath: string;
@@ -31,6 +33,9 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const [view, setView] = useState<AppView>("main");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [newWorktreeStep, setNewWorktreeStep] = useState<NewWorktreeStep>("name");
+  const [newWorktreeName, setNewWorktreeName] = useState("");
+  const [newWorktreeBase, setNewWorktreeBase] = useState("");
 
   const filteredWorktrees = worktrees.filter((wt) => {
     if (!filterText) return true;
@@ -155,6 +160,31 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     }
   }, [selectedWorktree, flash, handleSync]);
 
+  const handleNewWorktree = useCallback(async (name: string, base: string) => {
+    try {
+      const { join } = await import("path");
+      const { mkdir, writeFile } = await import("fs/promises");
+      const { loadGroveConfig } = await import("../data/groveConfig.js");
+
+      const groveConfig = await loadGroveConfig(repoPath);
+      const worktreeRoot = resolveWorktreeRoot(repoPath, groveConfig?.worktrees?.root);
+      const resolvedBase = base.trim() || (await detectDefaultBranch(repoPath));
+      const worktreePath = join(worktreeRoot, name.replace(/\//g, "-"));
+
+      flash(`creating ${name}…`);
+      await execa("git", ["worktree", "add", "-b", name, worktreePath, resolvedBase], { cwd: repoPath });
+
+      const groveMetaDir = join(worktreePath, ".grove");
+      await mkdir(groveMetaDir, { recursive: true });
+      await writeFile(join(groveMetaDir, "meta.json"), JSON.stringify({ baseBranch: resolvedBase }, null, 2));
+
+      flash(`created ${name}`);
+      await handleSync();
+    } catch (err) {
+      flash(`create failed: ${(err as Error).message}`);
+    }
+  }, [repoPath, flash, handleSync]);
+
   useInput((input, key) => {
     if (filterActive) {
       if (key.escape) {
@@ -180,6 +210,16 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
       return;
     }
 
+    if (view === "newWorktree") {
+      if (key.escape) {
+        setView("main");
+        setNewWorktreeName("");
+        setNewWorktreeBase("");
+        setNewWorktreeStep("name");
+      }
+      return;
+    }
+
     if (input === "D" && selectedWorktree && !selectedWorktree.isMain) {
       setView("confirmDelete");
       return;
@@ -194,6 +234,13 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     }
     if (input === "s") {
       void handleSync();
+      return;
+    }
+    if (input === "n") {
+      setNewWorktreeName("");
+      setNewWorktreeBase("");
+      setNewWorktreeStep("name");
+      setView("newWorktree");
       return;
     }
     if (input === "o") {
@@ -249,6 +296,9 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
         </Text>
         <Text>
           <Text color="cyan">↓/j</Text> <Text color="gray">move down</Text>
+        </Text>
+        <Text>
+          <Text color="cyan">n</Text> <Text color="gray">new worktree</Text>
         </Text>
         <Text>
           <Text color="cyan">s</Text> <Text color="gray">sync worktrees</Text>
@@ -338,6 +388,34 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
             setFilterText("");
           }}
         />
+      ) : view === "newWorktree" && newWorktreeStep === "name" ? (
+        <Box paddingX={1}>
+          <Text color="cyan">new  </Text>
+          <TextInput
+            value={newWorktreeName}
+            onChange={setNewWorktreeName}
+            onSubmit={(val) => {
+              if (val.trim()) setNewWorktreeStep("base");
+              else setView("main");
+            }}
+            placeholder="branch name..."
+          />
+          <Text color="gray"> (Esc to cancel)</Text>
+        </Box>
+      ) : view === "newWorktree" && newWorktreeStep === "base" ? (
+        <Box paddingX={1}>
+          <Text color="cyan">base </Text>
+          <TextInput
+            value={newWorktreeBase}
+            onChange={setNewWorktreeBase}
+            onSubmit={(val) => {
+              setView("main");
+              void handleNewWorktree(newWorktreeName, val);
+            }}
+            placeholder="base branch (empty = repo default)..."
+          />
+          <Text color="gray"> (Esc to cancel)</Text>
+        </Box>
       ) : view === "confirmDelete" ? (
         <Box paddingX={1}>
           <Text color="red">Delete </Text>
