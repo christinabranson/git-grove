@@ -361,3 +361,30 @@ export async function detectRepoRoot(): Promise<string> {
     throw new Error("Not inside a git repository");
   }
 }
+
+export async function detectDefaultBranch(repoPath: string): Promise<string> {
+  try {
+    const { stdout } = await execa(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
+      { cwd: repoPath },
+    );
+    const ref = stdout.trim();
+    if (ref) return ref.replace(/^[^/]+\//, "");
+  } catch {
+    // remote HEAD not configured
+  }
+
+  for (const candidate of ["main", "master"]) {
+    try {
+      await execa("git", ["rev-parse", "--verify", candidate], {
+        cwd: repoPath,
+      });
+      return candidate;
+    } catch {
+      // branch doesn't exist
+    }
+  }
+
+  return "main";
+}

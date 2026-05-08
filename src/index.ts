@@ -8,6 +8,7 @@ import {
   loadWorktrees,
   detectRepoRoot,
   resolveWorktreeRoot,
+  detectDefaultBranch,
 } from "./data/worktrees.js";
 import { printStatus } from "./commands/status.js";
 import { App } from "./tui/App.js";
@@ -152,9 +153,9 @@ program
   .description("Create or attach a worktree and start its environment")
   .option(
     "--new",
-    "Create a new branch (use --base to set the starting point, defaults to main)",
+    "Create a new branch (use --base to set the starting point, defaults to the repo default branch)",
   )
-  .option("--base <branch>", "Base branch for --new (default: main)")
+  .option("--base <branch>", "Base branch for --new (default: repo default branch)")
   .option("--json", "Output machine-readable JSON")
   .action(
     async (
@@ -200,7 +201,7 @@ program
         if (!existsSync(worktreePath)) {
           if (!opts.json) console.log(`Creating worktree at ${worktreePath}…`);
           if (opts.new) {
-            const base = opts.base ?? "main";
+            const base = opts.base ?? (await detectDefaultBranch(repoPath));
             if (!opts.json) console.log(`  branching off ${base}`);
             await execa(
               "git",
