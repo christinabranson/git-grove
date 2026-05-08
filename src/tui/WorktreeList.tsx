@@ -53,6 +53,11 @@ function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
           {worktree.branch}
         </Text>
       )}
+      {worktree.isCurrent && (
+        <Text color="cyan" dimColor>
+          {"     "}◀ current
+        </Text>
+      )}
       {worktree.baseBranch && !worktree.isMain && (
         <Text color="gray" dimColor>
           {"     "}off {worktree.baseBranch}

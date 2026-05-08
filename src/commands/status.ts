@@ -73,6 +73,7 @@ export function printStatus(worktrees: Worktree[]): void {
       (wt.isMain
         ? chalk.blue(wt.branch) + chalk.gray(" (main)")
         : chalk.white(wt.branch)) +
+      (wt.isCurrent ? chalk.cyan(" ◀ current") : "") +
       (wt.baseBranch && !wt.isMain
         ? "\n" + chalk.gray(`  off ${wt.baseBranch}`)
         : "");
