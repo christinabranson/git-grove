@@ -87,10 +87,10 @@ echo '.env.worktree' >> ~/.gitignore_global
 git config --global core.excludesfile ~/.gitignore_global
 ```
 
-| File / Dir       | What it is                                              |
-| ---------------- | ------------------------------------------------------- |
-| `.grove/`        | Per-worktree metadata (base branch, local config)       |
-| `.env.worktree`  | Your port assignments and Compose project name          |
+| File / Dir      | What it is                                        |
+| --------------- | ------------------------------------------------- |
+| `.grove/`       | Per-worktree metadata (base branch, local config) |
+| `.env.worktree` | Your port assignments and Compose project name    |
 
 These are machine-local and worktree-local — committing them would break other developers' environments.
 
