@@ -7,10 +7,14 @@ import { presets, recommendPreset, type PresetName } from "../setup/presets.js";
 import type { GroveConfig } from "../types.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
+import { expandNaming, buildEnvAgent } from "../setup/naming.js";
+import { execa } from "execa";
+import { loadGroveConfig } from "../data/groveConfig.js";
 
 export interface SetupOptions {
   preset?: PresetName;
   dryRun?: boolean;
+  refreshEnv?: boolean;
   yes?: boolean;
   reset?: boolean;
 }
@@ -117,6 +121,39 @@ async function writeGroveConfig(
   );
 }
 
+async function resolveCurrentBranch(repoPath: string): Promise<string> {
+  try {
+    const { stdout } = await execa(
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      {
+        cwd: repoPath,
+      },
+    );
+    const branch = stdout.trim();
+    return branch && branch !== "HEAD" ? branch : "main";
+  } catch {
+    return "main";
+  }
+}
+
+async function regenerateEnvFromConfig(
+  repoPath: string,
+  config: GroveConfig,
+): Promise<void> {
+  const branch = await resolveCurrentBranch(repoPath);
+  const envPath = path.join(repoPath, ".env.worktree");
+  const expanded = expandNaming(config, branch);
+  const envContent = await buildEnvAgent(expanded);
+  await writeFile(envPath, envContent, "utf-8");
+
+  console.log(chalk.green("✓ Regenerated .env.worktree"));
+  console.log(chalk.gray(`  branch: ${branch}`));
+  for (const line of envContent.trim().split("\n")) {
+    console.log(chalk.gray(`  ${line}`));
+  }
+}
+
 export async function runSetup(
   repoPath: string,
   opts: SetupOptions = {},
@@ -125,12 +162,27 @@ export async function runSetup(
 
   // Guard: existing config without --reset
   if (existsSync(configPath) && !opts.reset && !opts.dryRun) {
-    console.log(chalk.yellow(".grove/config.json already exists."));
-    console.log(
-      chalk.gray(
-        "  Run with --reset to regenerate it, or --dry-run to preview a new config.",
-      ),
-    );
+    if (!opts.refreshEnv) {
+      console.log(chalk.yellow(".grove/config.json already exists."));
+      console.log(
+        chalk.gray(
+          "  Run with --reset to regenerate it, or --dry-run to preview a new config.",
+        ),
+      );
+      return;
+    }
+
+    const existing = await loadGroveConfig(repoPath);
+    if (!existing) {
+      console.log(
+        chalk.yellow(
+          "Unable to refresh .env.worktree: .grove/config.json is missing, disabled, or invalid.",
+        ),
+      );
+      return;
+    }
+
+    await regenerateEnvFromConfig(repoPath, existing);
     return;
   }
 
@@ -199,4 +251,8 @@ export async function runSetup(
   console.log(chalk.gray("  grove status          — show all worktrees"));
   console.log(chalk.gray("  grove                 — open the TUI"));
   console.log();
+
+  if (opts.refreshEnv) {
+    await regenerateEnvFromConfig(repoPath, config);
+  }
 }

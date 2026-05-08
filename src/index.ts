@@ -156,11 +156,20 @@ program
     "Create a new branch (use --base to set the starting point, defaults to main)",
   )
   .option("--base <branch>", "Base branch for --new (default: main)")
+  .option(
+    "--refresh-env",
+    "Regenerate .env.worktree from grove config before starting",
+  )
   .option("--json", "Output machine-readable JSON")
   .action(
     async (
       target: string,
-      opts: { new?: boolean; base?: string; json?: boolean },
+      opts: {
+        new?: boolean;
+        base?: string;
+        refreshEnv?: boolean;
+        json?: boolean;
+      },
     ) => {
       const { execa } = await import("execa");
       const { existsSync } = await import("fs");
@@ -229,21 +238,36 @@ program
           console.log(`Attaching to existing worktree at ${worktreePath}…`);
         }
 
-        // 2. Generate .env.worktree from grove config naming templates if not present
+        // 2. Generate .env.worktree from grove config naming templates
         const envAgentPath = pathMod.join(worktreePath, ".env.worktree");
         const groveConfig =
           (await loadGroveConfig(worktreePath)) ??
           (await loadGroveConfig(repoPath));
-        if (!existsSync(envAgentPath)) {
-          if (groveConfig) {
-            if (!opts.json)
-              console.log("Generating .env.worktree from grove config…");
+        const shouldGenerateEnv = !existsSync(envAgentPath) || opts.refreshEnv;
+        if (shouldGenerateEnv) {
+          if (!groveConfig) {
+            if (!opts.json && opts.refreshEnv) {
+              console.log(
+                chalk.yellow(
+                  "  warning: --refresh-env requested but no .grove/config.json was found",
+                ),
+              );
+            }
+          } else {
+            if (!opts.json) {
+              console.log(
+                opts.refreshEnv
+                  ? "Regenerating .env.worktree from grove config…"
+                  : "Generating .env.worktree from grove config…",
+              );
+            }
             const expanded = expandNaming(groveConfig, branch);
             const envContent = await buildEnvAgent(expanded);
             await writeFile(envAgentPath, envContent, "utf-8");
             if (!opts.json) {
-              for (const line of envContent.trim().split("\n"))
+              for (const line of envContent.trim().split("\n")) {
                 console.log(chalk.gray(`  ${line}`));
+              }
             }
           }
         }
@@ -755,12 +779,17 @@ program
   .description("Detect project type and write .grove/config.json")
   .option("--preset <name>", "Use a specific preset (docker, vite, node)")
   .option("--dry-run", "Print proposed config without writing anything")
+  .option(
+    "--refresh-env",
+    "Regenerate .env.worktree in the current worktree from grove config",
+  )
   .option("--yes", "Skip confirmation prompt")
   .option("--reset", "Overwrite existing .grove/config.json")
   .action(
     async (opts: {
       preset?: string;
       dryRun?: boolean;
+      refreshEnv?: boolean;
       yes?: boolean;
       reset?: boolean;
     }) => {
@@ -769,6 +798,7 @@ program
         await runSetup(repoPath, {
           preset: opts.preset as PresetName | undefined,
           dryRun: opts.dryRun,
+          refreshEnv: opts.refreshEnv,
           yes: opts.yes,
           reset: opts.reset,
         });

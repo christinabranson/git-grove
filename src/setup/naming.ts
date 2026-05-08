@@ -1,4 +1,5 @@
 import net from "net";
+import { execa } from "execa";
 import type { GroveConfig } from "../types.js";
 
 /**
@@ -41,6 +42,9 @@ const DEFAULT_PORT_STARTS: Record<string, number> = {
   REDIS_PORT: 6379,
   LOCALSTACK_PORT: 4566,
 };
+
+const DOCKER_PUBLISHED_PORT_RE =
+  /(?:^|[\s,])(?:[^\s:,]+:)?(\d{2,5})->\d{2,5}\/(?:tcp|udp)/g;
 
 /**
  * Expand naming templates from .grove/config.json for a specific branch.
@@ -109,6 +113,52 @@ export async function findFreePort(start: number): Promise<number> {
   throw new Error(`Could not find a free port starting from ${start}`);
 }
 
+export function extractPublishedHostPorts(portsField: string): number[] {
+  const discovered = new Set<number>();
+
+  for (const match of portsField.matchAll(DOCKER_PUBLISHED_PORT_RE)) {
+    const value = Number.parseInt(match[1], 10);
+    if (!Number.isNaN(value)) discovered.add(value);
+  }
+
+  return [...discovered];
+}
+
+async function getDockerPublishedHostPorts(): Promise<number[]> {
+  try {
+    const { stdout } = await execa("docker", ["ps", "--format", "json"]);
+    const ports = new Set<number>();
+
+    for (const line of stdout.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      const field =
+        typeof parsed["Ports"] === "string"
+          ? parsed["Ports"]
+          : typeof parsed["ports"] === "string"
+            ? parsed["ports"]
+            : "";
+
+      for (const port of extractPublishedHostPorts(field)) {
+        ports.add(port);
+      }
+    }
+
+    return [...ports];
+  } catch {
+    // Docker may be unavailable or not running; fall back to socket checks only.
+    return [];
+  }
+}
+
 async function findFreePortWithReserved(
   start: number,
   reserved: Set<number>,
@@ -144,7 +194,7 @@ export async function buildEnvAgent(
     ...expanded.ports,
   };
 
-  const reserved = new Set<number>();
+  const reserved = new Set<number>(await getDockerPublishedHostPorts());
   const resolvedPorts: Record<string, number> = {};
 
   for (const [key, value] of Object.entries(portSpecs)) {

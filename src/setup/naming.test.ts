@@ -1,5 +1,10 @@
 import { describe, test, expect } from "vitest";
-import { branchSafe, expandNaming, buildEnvAgent } from "./naming.js";
+import {
+  branchSafe,
+  expandNaming,
+  buildEnvAgent,
+  extractPublishedHostPorts,
+} from "./naming.js";
 import type { ExpandedNaming } from "./naming.js";
 import type { GroveConfig } from "../types.js";
 
@@ -91,16 +96,16 @@ describe("expandNaming", () => {
   test("respects explicit port numbers", () => {
     const config: GroveConfig = {
       ...baseConfig,
-      naming: { dbPort: 5544, webPort: 3000, apiPort: 4000 },
+      naming: { dbPort: 62044, webPort: 62000, apiPort: 62001 },
     };
     const result = expandNaming(config, "main");
-    expect(result.dbPort).toBe(5544);
-    expect(result.webPort).toBe(3000);
-    expect(result.apiPort).toBe(4000);
+    expect(result.dbPort).toBe(62044);
+    expect(result.webPort).toBe(62000);
+    expect(result.apiPort).toBe(62001);
     expect(result.ports).toMatchObject({
-      DB_PORT: 5544,
-      WEB_PORT: 3000,
-      API_PORT: 4000,
+      DB_PORT: 62044,
+      WEB_PORT: 62000,
+      API_PORT: 62001,
     });
   });
 
@@ -140,13 +145,13 @@ describe("buildEnvAgent", () => {
     composeProject: "grove-main",
     sharedProject: null,
     dbSchema: "myapp_main",
-    dbPort: 5544,
-    webPort: 3000,
-    apiPort: 4000,
+    dbPort: 62044,
+    webPort: 62000,
+    apiPort: 62001,
     ports: {
-      WEB_PORT: 3000,
-      API_PORT: 4000,
-      DB_PORT: 5544,
+      WEB_PORT: 62000,
+      API_PORT: 62001,
+      DB_PORT: 62044,
     },
   };
 
@@ -157,12 +162,12 @@ describe("buildEnvAgent", () => {
 
   test("includes WEB_PORT", async () => {
     const result = await buildEnvAgent(explicitExpanded);
-    expect(result).toContain("WEB_PORT=3000");
+    expect(result).toContain("WEB_PORT=62000");
   });
 
   test("includes API_PORT", async () => {
     const result = await buildEnvAgent(explicitExpanded);
-    expect(result).toContain("API_PORT=4000");
+    expect(result).toContain("API_PORT=62001");
   });
 
   test("includes DB_SCHEMA", async () => {
@@ -172,7 +177,7 @@ describe("buildEnvAgent", () => {
 
   test("includes DB_PORT", async () => {
     const result = await buildEnvAgent(explicitExpanded);
-    expect(result).toContain("DB_PORT=5544");
+    expect(result).toContain("DB_PORT=62044");
   });
 
   test("does not include SHARED_PROJECT_NAME when sharedProject is null", async () => {
@@ -210,16 +215,37 @@ describe("buildEnvAgent", () => {
     // Keep WEB/API static in this test so we avoid relying on open-port state.
     const expanded: ExpandedNaming = {
       ...explicitExpanded,
-      webPort: 3001,
-      apiPort: 3002,
+      webPort: 62010,
+      apiPort: 62011,
       ports: {
         ...explicitExpanded.ports,
-        WEB_PORT: 3001,
-        API_PORT: 3002,
+        WEB_PORT: 62010,
+        API_PORT: 62011,
       },
     };
     const result = await buildEnvAgent(expanded);
-    expect(result).toContain("WEB_PORT=3001");
-    expect(result).toContain("API_PORT=3002");
+    expect(result).toContain("WEB_PORT=62010");
+    expect(result).toContain("API_PORT=62011");
+  });
+});
+
+describe("extractPublishedHostPorts", () => {
+  test("extracts ports from docker short syntax output", () => {
+    const result = extractPublishedHostPorts(
+      "0.0.0.0:5432->5432/tcp, :::5432->5432/tcp",
+    );
+    expect(result).toContain(5432);
+  });
+
+  test("extracts multiple published host ports", () => {
+    const result = extractPublishedHostPorts(
+      "0.0.0.0:4566->4566/tcp, 0.0.0.0:6379->6379/tcp",
+    );
+    expect(result).toEqual(expect.arrayContaining([4566, 6379]));
+  });
+
+  test("returns empty array when there are no published mappings", () => {
+    const result = extractPublishedHostPorts("443/tcp, 8080/tcp");
+    expect(result).toEqual([]);
   });
 });
