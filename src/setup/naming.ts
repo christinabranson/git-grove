@@ -68,7 +68,7 @@ export function expandNaming(
 
   return {
     composeProject: expandTemplate(
-      naming.composeProject ?? "grove-${branch_safe}",
+      naming.composeProject ?? "${project}-${branch_safe}",
       vars,
     ),
     sharedProject: naming.sharedProject
@@ -187,6 +187,18 @@ export async function buildEnvAgent(
   expanded: ExpandedNaming,
   existingWebPort?: number,
 ): Promise<string> {
+  const envVars = await buildCanonicalEnvVars(expanded, existingWebPort);
+  const lines = Object.entries(envVars)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`);
+
+  return lines.join("\n") + "\n";
+}
+
+export async function buildCanonicalEnvVars(
+  expanded: ExpandedNaming,
+  existingWebPort?: number,
+): Promise<Record<string, string>> {
   const portSpecs: Record<string, number | "auto"> = {
     WEB_PORT: expanded.webPort,
     API_PORT: expanded.apiPort,
@@ -216,18 +228,14 @@ export async function buildEnvAgent(
     resolvedPorts[key] = resolved;
   }
 
-  const portLines = Object.entries(resolvedPorts).map(
-    ([key, value]) => `${key}=${value}`,
-  );
-
-  const lines = [
-    `COMPOSE_PROJECT_NAME=${expanded.composeProject}`,
-    ...portLines,
-    `DB_SCHEMA=${expanded.dbSchema}`,
+  return {
+    COMPOSE_PROJECT_NAME: expanded.composeProject,
+    ...Object.fromEntries(
+      Object.entries(resolvedPorts).map(([key, value]) => [key, String(value)]),
+    ),
+    DB_SCHEMA: expanded.dbSchema,
     ...(expanded.sharedProject
-      ? [`SHARED_PROJECT_NAME=${expanded.sharedProject}`]
-      : []),
-  ];
-
-  return lines.join("\n") + "\n";
+      ? { SHARED_PROJECT_NAME: expanded.sharedProject }
+      : {}),
+  };
 }

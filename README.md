@@ -133,7 +133,7 @@ Proposed .grove/config.json:
   },
   "shared": { "db": true, "redis": true },
   "naming": {
-    "composeProject": "grove-${branch_safe}",
+    "composeProject": "${project}-${branch_safe}",
     "dbSchema": "my_app_${branch_safe}",
     "ports": {
       "WEB_PORT": "auto",
@@ -144,7 +144,7 @@ Proposed .grove/config.json:
     "webPort": "auto",
     "apiPort": "auto"
   },
-  "worktrees": { "prefix": "grove" }
+  "worktrees": { "prefix": "grove", "defaultBaseBranch": "main" }
 }
 
   Add these to .gitignore (per-worktree, should not be committed):
@@ -162,6 +162,7 @@ Grove only writes `.grove/config.json`. It never touches `docker-compose.yml`, `
 | ----------------- | ------------------------------------------------------------- |
 | `--preset <name>` | Skip detection, use a known preset (`docker`, `vite`, `node`) |
 | `--dry-run`       | Print the proposed config without writing anything            |
+| `--refresh-env`   | Regenerate `.env.worktree` from the resolved Grove config     |
 | `--yes`           | Skip the confirmation prompt                                  |
 | `--reset`         | Overwrite an existing `.grove/config.json`                    |
 
@@ -169,6 +170,7 @@ Grove only writes `.grove/config.json`. It never touches `docker-compose.yml`, `
 grove setup --preset docker --yes     # non-interactive, docker preset
 grove setup --dry-run                 # preview only
 grove setup --reset                   # regenerate from scratch
+grove setup --refresh-env             # regenerate .env.worktree in current worktree
 ```
 
 ### Available presets
@@ -191,7 +193,7 @@ The `naming` section in `.grove/config.json` stores **rules, not values**. Templ
 
 Example:
 
-- `"composeProject": "grove-${branch_safe}"` → `grove-feat-auth-refresh`
+- `"composeProject": "${project}-${branch_safe}"` → `myapp-feat-auth-refresh`
 - `"dbSchema": "${project}_${branch_safe}"` → `myapp_feat_auth_refresh`
 - `"ports": { "REDIS_PORT": "auto" }` → Grove allocates a free host port and writes `REDIS_PORT=<port>`
 - `"dbPort": "auto"` → Grove finds a free DB host port at spin time
@@ -200,6 +202,15 @@ Example:
 This means you never manually assign ports or project names. `grove start` generates the `.env.worktree` file for each new worktree automatically.
 
 For arbitrary services (redis, localstack, mailhog, etc.), prefer `naming.ports` so you are not limited to built-in keys.
+
+### Compose env contract detection and alias generation
+
+Grove inspects your Compose contract and generates compatibility aliases automatically.
+
+- Canonical Grove keys remain the source of truth (`WEB_PORT`, `API_PORT`, `DB_PORT`, `DB_SCHEMA`, `COMPOSE_PROJECT_NAME`).
+- If Compose expects alternative keys (for example `APP_PORT`, `POSTGRES_PORT`, `POSTGRES_DB`), Grove adds those aliases to `.env.worktree` with matching values.
+- Detection uses `docker compose config --no-interpolate --format json` when available, falls back to Compose text scanning, and also reads `docker compose config --variables` when supported.
+- If Docker CLI is unavailable during detection, Grove warns and continues with existing behavior.
 
 ---
 
@@ -224,7 +235,15 @@ REDIS_DB=1                              # informational — shown in TUI card
 DB_SCHEMA=my_app_feat_auth             # informational — shown in TUI card
 ```
 
-Grove reads this file to discover port bindings and the Compose project name. It never writes to it. Each worktree gets its own `.env.worktree` with unique ports and a unique `COMPOSE_PROJECT_NAME` to keep stacks isolated.
+Grove reads this file to discover port bindings and the Compose project name, and can generate or refresh it via `grove start` and `grove setup --refresh-env`. Each worktree gets its own `.env.worktree` with unique ports and a unique `COMPOSE_PROJECT_NAME` to keep stacks isolated.
+
+Before `docker compose up`, Grove runs a preflight resolve (`docker compose --env-file .env.worktree config --format json`) and fails fast on common contract issues:
+
+- missing expected variables
+- published host-port collisions with running containers
+- fallback-to-default port mismatches (for example resolving to `3000` or `5432` when Grove allocated different values)
+
+Error output includes the affected service/variable and an actionable fix.
 
 For Postgres or other host-bound services, make sure your compose file uses the generated env var in its `ports` mapping, for example:
 
@@ -292,11 +311,12 @@ When this file is present, Grove uses it instead of inferring the environment. Y
 
 **Top-level config fields:**
 
-| Field               | Default                          | Description                                    |
-| ------------------- | -------------------------------- | ---------------------------------------------- |
-| `sharedComposeFile` | `compose.shared.yaml`            | Path to the shared infrastructure compose file |
-| `editor`            | auto-detected                    | Editor to open with `grove open` / `o` key     |
-| `worktrees.root`    | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed                 |
+| Field                         | Default                          | Description                                                   |
+| ----------------------------- | -------------------------------- | ------------------------------------------------------------- |
+| `sharedComposeFile`           | `compose.shared.yaml`            | Path to the shared infrastructure compose file                |
+| `editor`                      | auto-detected                    | Editor to open with `grove open` / `o` key                    |
+| `worktrees.root`              | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed                                |
+| `worktrees.defaultBaseBranch` | `main`                           | Default base for `grove start --new` when `--base` is omitted |
 
 ---
 
@@ -585,6 +605,9 @@ grove start feat/my-feature --new
 # Create a new branch off a specific base branch
 grove start feat/my-feature --new --base hotfix-from-main-setup
 
+# Force .env.worktree regeneration from current Grove config for this worktree
+grove start feat/my-feature --refresh-env
+
 # Attach to an existing worktree and (re)start its environment
 grove start feat/my-feature
 
@@ -615,8 +638,33 @@ grove docker up feat/my-feature
 grove docker down feat/my-feature
 grove docker teardown feat/my-feature   # destroys volumes — prompts for confirmation
 
+# Diagnose compose env contract vs generated env vars
+grove doctor env feat/my-feature
+
 # Show resolved configuration (worktree root, editor, grove config)
 grove info
+```
+
+### Troubleshooting env mismatches
+
+If `docker compose` appears to ignore Grove ports:
+
+1. Regenerate env for the current worktree:
+
+```bash
+grove setup --refresh-env
+```
+
+2. Inspect contract expectations and missing aliases:
+
+```bash
+grove doctor env
+```
+
+3. For target worktrees started via Grove:
+
+```bash
+grove start feat/my-feature --refresh-env
 ```
 
 ---

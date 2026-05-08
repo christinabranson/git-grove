@@ -4,6 +4,11 @@ import { existsSync } from "fs";
 import path from "path";
 import type { GroveProvider } from "./types.js";
 import type { GroveEnvironment } from "../types.js";
+import {
+  discoverComposeContract,
+  preflightComposeEnv,
+  readEnvFile,
+} from "./docker-compose-contract.js";
 
 interface EnvAgentVars {
   projectName: string;
@@ -86,6 +91,30 @@ export class DockerComposeProvider implements GroveProvider {
   async start(): Promise<GroveEnvironment> {
     const vars = await parseEnvAgentAsync(this.worktreePath);
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
+
+    const contract = await discoverComposeContract(this.worktreePath);
+    const envVars = await readEnvFile(this.worktreePath);
+    const preflight = await preflightComposeEnv(
+      this.worktreePath,
+      contract,
+      envVars,
+    );
+    if (!preflight.ok) {
+      const lines = ["Compose env preflight failed:"];
+      for (const issue of preflight.issues) {
+        lines.push(`- ${issue.message}`);
+        if (issue.details) lines.push(`  ${issue.details}`);
+        if (issue.suggestion) lines.push(`  fix: ${issue.suggestion}`);
+      }
+      throw new Error(lines.join("\n"));
+    }
+
+    for (const issue of preflight.issues.filter(
+      (i) => i.severity === "warning",
+    )) {
+      console.warn(`warning: ${issue.message}`);
+      if (issue.details) console.warn(`  ${issue.details}`);
+    }
 
     await execa(
       "docker",

@@ -7,16 +7,27 @@ import { presets, recommendPreset, type PresetName } from "../setup/presets.js";
 import type { GroveConfig } from "../types.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
-import { expandNaming, buildEnvAgent } from "../setup/naming.js";
+import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
 import { execa } from "execa";
 import { loadGroveConfig } from "../data/groveConfig.js";
+import {
+  buildAliasMap,
+  discoverComposeContract,
+  renderEnvContent,
+} from "../providers/docker-compose-contract.js";
 
 export interface SetupOptions {
   preset?: PresetName;
   dryRun?: boolean;
   refreshEnv?: boolean;
+  debug?: boolean;
   yes?: boolean;
   reset?: boolean;
+}
+
+function debugLog(enabled: boolean | undefined, message: string): void {
+  if (!enabled) return;
+  console.log(chalk.gray(`  [debug] ${message}`));
 }
 
 function printDetectionSummary(
@@ -140,17 +151,51 @@ async function resolveCurrentBranch(repoPath: string): Promise<string> {
 async function regenerateEnvFromConfig(
   repoPath: string,
   config: GroveConfig,
+  debug?: boolean,
 ): Promise<void> {
   const branch = await resolveCurrentBranch(repoPath);
   const envPath = path.join(repoPath, ".env.worktree");
+  debugLog(debug, `branch resolved as: ${branch}`);
   const expanded = expandNaming(config, branch);
-  const envContent = await buildEnvAgent(expanded);
+  const canonicalEnv = await buildCanonicalEnvVars(expanded);
+  const contract = await discoverComposeContract(repoPath);
+  const aliasEnv = buildAliasMap(contract, canonicalEnv);
+  const envContent = renderEnvContent(canonicalEnv, aliasEnv);
+  debugLog(
+    debug,
+    `contract expected vars: ${contract.expectedVars.length > 0 ? contract.expectedVars.join(", ") : "(none)"}`,
+  );
+  debugLog(
+    debug,
+    `contract port refs: ${contract.portRefs.length > 0 ? contract.portRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+  );
+  debugLog(
+    debug,
+    `contract db refs: ${contract.dbNameRefs.length > 0 ? contract.dbNameRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+  );
+  debugLog(
+    debug,
+    `canonical env vars: ${Object.keys(canonicalEnv)
+      .sort((a, b) => a.localeCompare(b))
+      .join(", ")}`,
+  );
   await writeFile(envPath, envContent, "utf-8");
 
   console.log(chalk.green("✓ Regenerated .env.worktree"));
   console.log(chalk.gray(`  branch: ${branch}`));
+  const aliasKeys = Object.keys(aliasEnv).sort((a, b) => a.localeCompare(b));
+  console.log(
+    chalk.gray(
+      `  aliases: ${aliasKeys.length > 0 ? aliasKeys.join(", ") : "none"}`,
+    ),
+  );
   for (const line of envContent.trim().split("\n")) {
     console.log(chalk.gray(`  ${line}`));
+  }
+  for (const warning of contract.warnings) {
+    console.log(
+      chalk.yellow(`  warning: compose contract detection: ${warning}`),
+    );
   }
 }
 
@@ -182,13 +227,41 @@ export async function runSetup(
       return;
     }
 
-    await regenerateEnvFromConfig(repoPath, existing);
+    await regenerateEnvFromConfig(repoPath, existing, opts.debug);
     return;
   }
 
   // 1. Detect project
   const detection = await detectProject(repoPath);
+  debugLog(
+    opts.debug,
+    `detected compose services: ${detection.composeServices.join(", ") || "(none)"}`,
+  );
+  debugLog(
+    opts.debug,
+    `detected app services: ${detection.appServices.join(", ") || "(none)"}`,
+  );
+  debugLog(
+    opts.debug,
+    `detected shared services: ${detection.sharedServices.join(", ") || "(none)"}`,
+  );
   printDetectionSummary(repoPath, detection);
+
+  if (opts.debug) {
+    const contract = await discoverComposeContract(repoPath);
+    debugLog(
+      true,
+      `contract expected vars: ${contract.expectedVars.join(", ") || "(none)"}`,
+    );
+    debugLog(
+      true,
+      `contract port refs: ${contract.portRefs.length > 0 ? contract.portRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+    );
+    debugLog(
+      true,
+      `contract db refs: ${contract.dbNameRefs.length > 0 ? contract.dbNameRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+    );
+  }
 
   // 2. Choose preset
   const presetName: PresetName = opts.preset ?? recommendPreset(detection);
@@ -253,6 +326,6 @@ export async function runSetup(
   console.log();
 
   if (opts.refreshEnv) {
-    await regenerateEnvFromConfig(repoPath, config);
+    await regenerateEnvFromConfig(repoPath, config, opts.debug);
   }
 }

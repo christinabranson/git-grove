@@ -81,7 +81,7 @@ export interface GroveConfigProvider {
  *   ${project}      — project name from this config
  */
 export interface GroveConfigNaming {
-  /** docker compose -p value. Default: "grove-${branch_safe}" */
+  /** docker compose -p value. Default: "${project}-${branch_safe}" */
   composeProject?: string;
   /** docker compose -p value for the shared infrastructure stack. Required to use shared stack features. */
   sharedProject?: string;
@@ -111,6 +111,8 @@ export interface GroveConfig {
   naming?: GroveConfigNaming;
   worktrees?: {
     prefix?: string;
+    /** Default base branch used by `grove start --new` when --base is not provided. Default: "main" */
+    defaultBaseBranch?: string;
     /** Absolute path to place new worktrees. Overrides the default <repo-parent>/<repo-name>-worktrees. */
     root?: string;
   };

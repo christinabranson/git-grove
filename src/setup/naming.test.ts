@@ -44,7 +44,7 @@ describe("branchSafe", () => {
 describe("expandNaming", () => {
   test("uses default composeProject template", () => {
     const result = expandNaming(baseConfig, "main");
-    expect(result.composeProject).toBe("grove-main");
+    expect(result.composeProject).toBe("myapp-main");
   });
 
   test("uses default dbSchema template with project name", () => {
@@ -71,7 +71,7 @@ describe("expandNaming", () => {
 
   test("expands branch_safe for slash-containing branch", () => {
     const result = expandNaming(baseConfig, "feature/my-feature");
-    expect(result.composeProject).toBe("grove-feature-my-feature");
+    expect(result.composeProject).toBe("myapp-feature-my-feature");
     expect(result.dbSchema).toBe("myapp_feature-my-feature");
   });
 
