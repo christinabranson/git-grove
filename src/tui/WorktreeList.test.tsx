@@ -153,7 +153,11 @@ describe("WorktreeList", () => {
   });
 
   test('shows "◀ current" label when isCurrent is true', () => {
-    const wt = makeWorktree({ isCurrent: true, isMain: false, branch: "feature" });
+    const wt = makeWorktree({
+      isCurrent: true,
+      isMain: false,
+      branch: "feature",
+    });
     const { lastFrame } = renderList([wt]);
     expect(lastFrame()).toContain("◀ current");
   });
