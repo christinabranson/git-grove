@@ -134,7 +134,13 @@ async function readBaseBranch(
 
 async function readDockerInfo(worktreePath: string) {
   const envPath = path.join(worktreePath, ".env.worktree");
-  if (!existsSync(envPath)) return null;
+  const examplePath = path.join(worktreePath, ".env.example");
+  const resolvedEnvPath = existsSync(envPath)
+    ? envPath
+    : existsSync(examplePath)
+      ? examplePath
+      : null;
+  if (!resolvedEnvPath) return null;
 
   const hasCompose =
     existsSync(path.join(worktreePath, "docker-compose.yml")) ||
@@ -142,7 +148,7 @@ async function readDockerInfo(worktreePath: string) {
 
   if (!hasCompose) return null;
 
-  const raw = await readFile(envPath, "utf-8");
+  const raw = await readFile(resolvedEnvPath, "utf-8");
   const env: Record<string, string> = {};
   for (const line of raw.split("\n")) {
     const match = line.match(/^([A-Z_]+)=(.*)$/);
