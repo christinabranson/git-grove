@@ -24,7 +24,7 @@ Current and expected runtime targets include:
 
 - Docker Compose
 - Kubernetes
-- Node or npm script based local processes
+- Node-based or npm-script-based local processes
 - Custom shell workflows
 
 When implementing features, keep these principles:
