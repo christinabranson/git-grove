@@ -35,7 +35,7 @@ function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
       : displayName.padEnd(maxNameLen);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexShrink={0}>
       <Box>
         <Text bold={isSelected} color={isSelected ? "cyan" : undefined}>
           {prefix}
@@ -63,6 +63,10 @@ function WorktreeRow({ worktree, isSelected, width }: WorktreeRowProps) {
           {"     "}off {worktree.baseBranch}
         </Text>
       )}
+      <Text color="gray" dimColor>
+        {"     "}
+        {worktree.path.replace(process.env.HOME ?? "", "~")}
+      </Text>
     </Box>
   );
 }

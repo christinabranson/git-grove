@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import { readFile } from "fs/promises";
+import { readFile, mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import type { Worktree, ChangeFootprint, GitChange, PRInfo } from "../types.js";
@@ -367,4 +367,48 @@ export async function detectRepoRoot(): Promise<string> {
   } catch {
     throw new Error("Not inside a git repository");
   }
+}
+
+export async function detectDefaultBranch(repoPath: string): Promise<string> {
+  try {
+    const { stdout } = await execa(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
+      { cwd: repoPath },
+    );
+    const ref = stdout.trim();
+    if (ref) return ref.replace(/^[^/]+\//, "");
+  } catch {
+    // remote HEAD not configured
+  }
+
+  for (const candidate of ["main", "master"]) {
+    for (const ref of [candidate, `origin/${candidate}`]) {
+      try {
+        await execa("git", ["rev-parse", "--verify", ref], { cwd: repoPath });
+        return candidate;
+      } catch {
+        // ref doesn't exist, try next
+      }
+    }
+  }
+
+  return "main";
+}
+
+export async function createWorktreeWithBase(
+  repoPath: string,
+  branch: string,
+  worktreePath: string,
+  base: string,
+): Promise<void> {
+  await execa("git", ["worktree", "add", "-b", branch, worktreePath, base], {
+    cwd: repoPath,
+  });
+  const groveMetaDir = path.join(worktreePath, ".grove");
+  await mkdir(groveMetaDir, { recursive: true });
+  await writeFile(
+    path.join(groveMetaDir, "meta.json"),
+    JSON.stringify({ baseBranch: base }, null, 2),
+  );
 }

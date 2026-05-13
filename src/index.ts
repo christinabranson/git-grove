@@ -8,6 +8,7 @@ import {
   loadWorktrees,
   detectRepoRoot,
   resolveWorktreeRoot,
+  createWorktreeWithBase,
 } from "./data/worktrees.js";
 import { printStatus } from "./commands/status.js";
 import { App } from "./tui/App.js";
@@ -20,9 +21,19 @@ import {
   DEFAULT_SHARED_COMPOSE_FILE,
 } from "./providers/shared.js";
 import { loadGroveConfig } from "./data/groveConfig.js";
-import { expandNaming, buildEnvAgent } from "./setup/naming.js";
+import { expandNaming } from "./setup/naming.js";
 import { runSetup } from "./commands/setup.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
+import { warnIfHardcodedComposePorts } from "./utils/hardcodedPortsCheck.js";
+import {
+  discoverComposeContract,
+  formatDoctorEnvReport,
+  preflightComposeEnv,
+  readEnvFile,
+  readSourceEnvFiles,
+  resolveContractEnvVars,
+  renderEnvContent,
+} from "./providers/docker-compose-contract.js";
 import type { PresetName } from "./setup/presets.js";
 
 const pkg = { name: "grove-wt", version: "0.1.0" };
@@ -154,20 +165,36 @@ program
     "--new",
     "Create a new branch (use --base to set the starting point, defaults to main)",
   )
-  .option("--base <branch>", "Base branch for --new (default: main)")
+  .option(
+    "--base <branch>",
+    "Base branch for --new (default: .grove worktrees.defaultBaseBranch or main)",
+  )
+  .option(
+    "--refresh-env",
+    "Regenerate .env.worktree from grove config before starting",
+  )
   .option("--json", "Output machine-readable JSON")
   .action(
     async (
       target: string,
-      opts: { new?: boolean; base?: string; json?: boolean },
+      opts: {
+        new?: boolean;
+        base?: string;
+        refreshEnv?: boolean;
+        json?: boolean;
+      },
     ) => {
       const { execa } = await import("execa");
       const { existsSync } = await import("fs");
       const { writeFile } = await import("fs/promises");
       const pathMod = await import("path");
+      const { buildCanonicalEnvVars } = await import("./setup/naming.js");
       try {
         const repoPath = await detectRepoRoot();
         const repoGroveConfig = await loadGroveConfig(repoPath);
+        await warnIfHardcodedComposePorts(repoPath, [
+          repoGroveConfig?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+        ]);
         const worktreeRoot = resolveWorktreeRoot(
           repoPath,
           repoGroveConfig?.worktrees?.root,
@@ -200,21 +227,12 @@ program
         if (!existsSync(worktreePath)) {
           if (!opts.json) console.log(`Creating worktree at ${worktreePath}…`);
           if (opts.new) {
-            const base = opts.base ?? "main";
+            const base =
+              opts.base ??
+              repoGroveConfig?.worktrees?.defaultBaseBranch ??
+              "main";
             if (!opts.json) console.log(`  branching off ${base}`);
-            await execa(
-              "git",
-              ["worktree", "add", "-b", branch, worktreePath, base],
-              { cwd: repoPath },
-            );
-            // Record base branch so grove can display it later
-            const groveMetaDir = pathMod.join(worktreePath, ".grove");
-            const { mkdir } = await import("fs/promises");
-            await mkdir(groveMetaDir, { recursive: true });
-            await writeFile(
-              pathMod.join(groveMetaDir, "meta.json"),
-              JSON.stringify({ baseBranch: base }, null, 2),
-            );
+            await createWorktreeWithBase(repoPath, branch, worktreePath, base);
           } else {
             await execa("git", ["fetch", "origin", branch], { cwd: repoPath });
             await execa("git", ["worktree", "add", worktreePath, branch], {
@@ -225,21 +243,100 @@ program
           console.log(`Attaching to existing worktree at ${worktreePath}…`);
         }
 
-        // 2. Generate .env.worktree from grove config naming templates if not present
+        // 2. Generate .env.worktree from grove config naming templates
         const envAgentPath = pathMod.join(worktreePath, ".env.worktree");
         const groveConfig =
           (await loadGroveConfig(worktreePath)) ??
           (await loadGroveConfig(repoPath));
-        if (!existsSync(envAgentPath)) {
-          if (groveConfig) {
-            if (!opts.json)
-              console.log("Generating .env.worktree from grove config…");
+        const shouldGenerateEnv = !existsSync(envAgentPath) || opts.refreshEnv;
+        if (shouldGenerateEnv) {
+          if (!groveConfig) {
+            if (!opts.json && opts.refreshEnv) {
+              console.log(
+                chalk.yellow(
+                  "  warning: --refresh-env requested but no .grove/config.json was found",
+                ),
+              );
+            }
+          } else {
+            if (!opts.json) {
+              console.log(
+                opts.refreshEnv
+                  ? "Regenerating .env.worktree from grove config…"
+                  : "Generating .env.worktree from grove config…",
+              );
+            }
+            const existingEnv = await readEnvFile(worktreePath);
+            const existingWebPort = /^\d+$/.test(existingEnv["WEB_PORT"] ?? "")
+              ? Number.parseInt(existingEnv["WEB_PORT"], 10)
+              : undefined;
             const expanded = expandNaming(groveConfig, branch);
-            const envContent = await buildEnvAgent(expanded);
+            const canonicalEnv = await buildCanonicalEnvVars(
+              expanded,
+              existingWebPort,
+            );
+            const contract = await discoverComposeContract(worktreePath);
+            const sourceEnv = {
+              ...(await readSourceEnvFiles(
+                worktreePath,
+                groveConfig.envContract?.sourceEnvFiles ?? [".env"],
+              )),
+              ...existingEnv,
+            };
+            const contractEnv = resolveContractEnvVars(
+              contract,
+              canonicalEnv,
+              sourceEnv,
+              groveConfig.envContract,
+            );
+            const envErrors = contractEnv.issues.filter(
+              (issue) => issue.severity === "error",
+            );
+            if (envErrors.length > 0) {
+              throw new Error(
+                [
+                  "Env contract resolution failed:",
+                  ...envErrors.map((issue) =>
+                    issue.details
+                      ? `- ${issue.message} (${issue.details})`
+                      : `- ${issue.message}`,
+                  ),
+                ].join("\n"),
+              );
+            }
+            const envContent = renderEnvContent(
+              canonicalEnv,
+              contractEnv.values,
+            );
             await writeFile(envAgentPath, envContent, "utf-8");
             if (!opts.json) {
-              for (const line of envContent.trim().split("\n"))
+              const aliasKeys = Object.keys(contractEnv.values).sort((a, b) =>
+                a.localeCompare(b),
+              );
+              console.log(
+                chalk.gray(
+                  `  aliases: ${aliasKeys.length > 0 ? aliasKeys.join(", ") : "none"}`,
+                ),
+              );
+              for (const line of envContent.trim().split("\n")) {
                 console.log(chalk.gray(`  ${line}`));
+              }
+              for (const warning of contract.warnings) {
+                console.log(
+                  chalk.yellow(
+                    `  warning: compose contract detection: ${warning}`,
+                  ),
+                );
+              }
+              for (const issue of contractEnv.issues.filter(
+                (issue) => issue.severity === "warning",
+              )) {
+                console.log(
+                  chalk.yellow(`  warning: env contract: ${issue.message}`),
+                );
+                if (issue.details)
+                  console.log(chalk.gray(`    ${issue.details}`));
+              }
             }
           }
         }
@@ -336,10 +433,21 @@ const docker = program
 docker
   .command("up [branch]")
   .description("Start docker compose stack for a worktree")
-  .action(async (branch?: string) => {
+  .option("--debug", "Enable debug output")
+  .action(async (branch: string | undefined, opts: { debug?: boolean }) => {
     const { execa } = await import("execa");
     try {
+      const debug = Boolean(opts.debug || process.env.GROVE_DEBUG === "1");
+      const logDebug = (message: string) => {
+        if (!debug) return;
+        console.log(chalk.gray(`  [debug] ${message}`));
+      };
+
       const repoPath = await detectRepoRoot();
+      const config = await loadGroveConfig(repoPath);
+      await warnIfHardcodedComposePorts(repoPath, [
+        config?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+      ]);
       const { worktrees } = await loadWorktrees(repoPath);
       const wt = branch
         ? worktrees.find(
@@ -354,22 +462,53 @@ docker
         console.error(`No .env.worktree found in ${wt.path}`);
         process.exit(1);
       }
+
+      const contract = await discoverComposeContract(wt.path);
+      const envVars = await readEnvFile(wt.path);
+      logDebug(
+        `compose expected vars: ${contract.expectedVars.join(", ") || "(none)"}`,
+      );
+      logDebug(
+        `compose port refs: ${contract.portRefs.length > 0 ? contract.portRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+      );
+      const preflight = await preflightComposeEnv(
+        wt.path,
+        contract,
+        envVars,
+        config?.envContract,
+      );
+      if (!preflight.ok) {
+        console.error("Compose env preflight failed:");
+        for (const issue of preflight.issues) {
+          console.error(`- ${issue.message}`);
+          if (issue.details) console.error(`  ${issue.details}`);
+          if (issue.suggestion) console.error(`  fix: ${issue.suggestion}`);
+        }
+        process.exit(1);
+      }
+
+      for (const issue of preflight.issues.filter(
+        (i) => i.severity === "warning",
+      )) {
+        console.warn(`warning: ${issue.message}`);
+        if (issue.details) console.warn(`  ${issue.details}`);
+      }
+
       const { projectName } = wt.docker;
       console.log(`Starting ${projectName}…`);
-      await execa(
-        "docker",
-        [
-          "compose",
-          "-p",
-          projectName,
-          "--env-file",
-          ".env.worktree",
-          "up",
-          "-d",
-          "--build",
-        ],
-        { cwd: wt.path },
-      );
+      const composeArgs = [
+        "compose",
+        "-p",
+        projectName,
+        "--env-file",
+        ".env.worktree",
+        "up",
+        "-d",
+        "--build",
+      ];
+      logDebug(`running in ${wt.path}`);
+      logDebug(`docker ${composeArgs.join(" ")}`);
+      await execa("docker", composeArgs, { cwd: wt.path });
       console.log(`✓ ${projectName} started`);
     } catch (err) {
       console.error((err as Error).message);
@@ -491,6 +630,9 @@ shared
     try {
       const repoPath = await detectRepoRoot();
       const config = await loadGroveConfig(repoPath);
+      await warnIfHardcodedComposePorts(repoPath, [
+        config?.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
+      ]);
       const info = resolveSharedStack(repoPath, config);
       if (!info) {
         console.error(
@@ -744,12 +886,19 @@ program
   .description("Detect project type and write .grove/config.json")
   .option("--preset <name>", "Use a specific preset (docker, vite, node)")
   .option("--dry-run", "Print proposed config without writing anything")
+  .option(
+    "--refresh-env",
+    "Regenerate .env.worktree in the current worktree from grove config",
+  )
+  .option("--debug", "Enable debug output")
   .option("--yes", "Skip confirmation prompt")
   .option("--reset", "Overwrite existing .grove/config.json")
   .action(
     async (opts: {
       preset?: string;
       dryRun?: boolean;
+      refreshEnv?: boolean;
+      debug?: boolean;
       yes?: boolean;
       reset?: boolean;
     }) => {
@@ -758,6 +907,8 @@ program
         await runSetup(repoPath, {
           preset: opts.preset as PresetName | undefined,
           dryRun: opts.dryRun,
+          refreshEnv: opts.refreshEnv,
+          debug: opts.debug,
           yes: opts.yes,
           reset: opts.reset,
         });
@@ -767,6 +918,44 @@ program
       }
     },
   );
+
+const doctor = program.command("doctor").description("Run Grove diagnostics");
+
+doctor
+  .command("env [branch]")
+  .description("Inspect compose env contract, aliases, and resolved host ports")
+  .action(async (branch?: string) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      const { worktrees } = await loadWorktrees(repoPath);
+      const wt = branch
+        ? worktrees.find(
+            (w) => w.branch === branch || w.branch.endsWith(`/${branch}`),
+          )
+        : worktrees[0];
+      if (!wt) {
+        console.error("No worktree found");
+        process.exit(1);
+      }
+
+      const contract = await discoverComposeContract(wt.path);
+      const envVars = await readEnvFile(wt.path);
+      const wtConfig =
+        (await loadGroveConfig(wt.path)) ?? (await loadGroveConfig(repoPath));
+      const preflight = await preflightComposeEnv(
+        wt.path,
+        contract,
+        envVars,
+        wtConfig?.envContract,
+      );
+
+      console.log(formatDoctorEnvReport(contract, envVars, preflight));
+      if (!preflight.ok) process.exit(1);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
 
 // Default: TUI mode (no subcommand)
 async function main() {

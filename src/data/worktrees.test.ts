@@ -3,18 +3,27 @@ import type { MockedFunction } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
 vi.mock("fs", () => ({ existsSync: vi.fn().mockReturnValue(false) }));
-vi.mock("fs/promises", () => ({ readFile: vi.fn() }));
+vi.mock("fs/promises", () => ({
+  readFile: vi.fn(),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { execa } from "execa";
 import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
 import {
   resolveWorktreeRoot,
   detectRepoRoot,
   loadWorktrees,
+  detectDefaultBranch,
+  createWorktreeWithBase,
 } from "./worktrees.js";
 
 const mockedExeca = execa as MockedFunction<typeof execa>;
 const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
+const mockedMkdir = mkdir as MockedFunction<typeof mkdir>;
+const mockedWriteFile = writeFile as MockedFunction<typeof writeFile>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -270,5 +279,87 @@ describe("loadWorktrees", () => {
     const { worktrees } = await loadWorktrees("/repo");
     expect(worktrees[0].changeFootprint).not.toBeNull();
     expect(worktrees[0].changeFootprint?.totalFiles).toBeGreaterThan(0);
+  });
+});
+
+describe("detectDefaultBranch", () => {
+  test("returns branch name from origin/HEAD when configured", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "origin/main\n",
+    } as ReturnType<typeof execa>);
+    expect(await detectDefaultBranch("/repo")).toBe("main");
+  });
+
+  test("falls back to local main when origin/HEAD not configured", async () => {
+    mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
+    expect(await detectDefaultBranch("/repo")).toBe("main");
+  });
+
+  test("falls back to origin/main when local main is absent", async () => {
+    mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
+    mockedExeca.mockRejectedValueOnce(new Error("no local main"));
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
+    expect(await detectDefaultBranch("/repo")).toBe("main");
+  });
+
+  test("falls back to local master when main is absent in both local and remote", async () => {
+    mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
+    mockedExeca.mockRejectedValueOnce(new Error("no local main"));
+    mockedExeca.mockRejectedValueOnce(new Error("no origin/main"));
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
+    expect(await detectDefaultBranch("/repo")).toBe("master");
+  });
+
+  test("returns main as ultimate fallback when nothing is found", async () => {
+    mockedExeca.mockRejectedValue(new Error("not found"));
+    expect(await detectDefaultBranch("/repo")).toBe("main");
+  });
+});
+
+describe("createWorktreeWithBase", () => {
+  test("runs git worktree add with correct arguments", async () => {
+    mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
+    await createWorktreeWithBase(
+      "/repo",
+      "feature-foo",
+      "/worktrees/feature-foo",
+      "main",
+    );
+    expect(mockedExeca).toHaveBeenCalledWith(
+      "git",
+      [
+        "worktree",
+        "add",
+        "-b",
+        "feature-foo",
+        "/worktrees/feature-foo",
+        "main",
+      ],
+      { cwd: "/repo" },
+    );
+  });
+
+  test("writes .grove/meta.json with the base branch", async () => {
+    mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
+    await createWorktreeWithBase(
+      "/repo",
+      "feature-foo",
+      "/worktrees/feature-foo",
+      "main",
+    );
+    expect(mockedMkdir).toHaveBeenCalledWith("/worktrees/feature-foo/.grove", {
+      recursive: true,
+    });
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      "/worktrees/feature-foo/.grove/meta.json",
+      JSON.stringify({ baseBranch: "main" }, null, 2),
+    );
   });
 });

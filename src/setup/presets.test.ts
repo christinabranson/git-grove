@@ -109,8 +109,14 @@ describe("presets.docker.generate", () => {
 
   test("includes naming templates", () => {
     const { naming } = presets.docker.generate(makeDetection());
-    expect(naming?.composeProject).toBe("grove-${branch_safe}");
+    expect(naming?.composeProject).toBe("${project}-${branch_safe}");
     expect(naming?.dbSchema).toBe("${project}_${branch_safe}");
+    expect(naming?.ports).toMatchObject({
+      WEB_PORT: "auto",
+      API_PORT: "auto",
+      DB_PORT: "auto",
+    });
+    expect(naming?.dbPort).toBe("auto");
     expect(naming?.webPort).toBe("auto");
     expect(naming?.apiPort).toBe("auto");
   });
@@ -119,6 +125,12 @@ describe("presets.docker.generate", () => {
     expect(presets.docker.generate(makeDetection()).worktrees?.prefix).toBe(
       "grove",
     );
+  });
+
+  test("sets default base branch", () => {
+    expect(
+      presets.docker.generate(makeDetection()).worktrees?.defaultBaseBranch,
+    ).toBe("main");
   });
 });
 
@@ -156,6 +168,12 @@ describe("presets.vite.generate", () => {
       "grove",
     );
   });
+
+  test("sets default base branch", () => {
+    expect(
+      presets.vite.generate(makeDetection()).worktrees?.defaultBaseBranch,
+    ).toBe("main");
+  });
 });
 
 describe("presets.node.generate", () => {
@@ -191,6 +209,12 @@ describe("presets.node.generate", () => {
     expect(presets.node.generate(makeDetection()).worktrees?.prefix).toBe(
       "grove",
     );
+  });
+
+  test("sets default base branch", () => {
+    expect(
+      presets.node.generate(makeDetection()).worktrees?.defaultBaseBranch,
+    ).toBe("main");
   });
 });
 
