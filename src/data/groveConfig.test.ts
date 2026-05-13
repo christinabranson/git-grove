@@ -56,7 +56,7 @@ describe("loadGroveConfig", () => {
         web: { type: "docker-compose", service: "web" },
       },
       naming: {
-        composeProject: "grove-${branch_safe}",
+        composeProject: "${project}-${branch_safe}",
         dbSchema: "my_project_${branch_safe}",
         webPort: "auto",
       },
