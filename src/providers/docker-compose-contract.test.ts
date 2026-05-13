@@ -50,30 +50,6 @@ services:
     );
   });
 
-  test("supports service indentation variants", () => {
-    const compose = `
-services:
-    app:
-      image: node:20
-      ports:
-        - "\${APP_PORT:-3000}:3000"
-      environment:
-        POSTGRES_DB: \${POSTGRES_DB:-app}
-`;
-
-    const contract = discoverComposeContractFromText(compose);
-
-    expect(contract.expectedVars).toEqual(
-      expect.arrayContaining(["APP_PORT", "POSTGRES_DB"]),
-    );
-    expect(contract.portRefs.map((r) => r.variable)).toEqual(
-      expect.arrayContaining(["APP_PORT"]),
-    );
-    expect(contract.dbNameRefs.map((r) => r.variable)).toEqual(
-      expect.arrayContaining(["POSTGRES_DB"]),
-    );
-  });
-
   test("discovers canonical grove vars from compose fixture", () => {
     const compose = `
 services:
@@ -124,27 +100,6 @@ services:
     expect(aliases["APP_PORT"]).toBe("8088");
     expect(aliases["POSTGRES_PORT"]).toBe("15432");
     expect(aliases["POSTGRES_DB"]).toBeUndefined();
-  });
-
-  test("does not map unknown port aliases to WEB_PORT", () => {
-    const contract = discoverComposeContractFromText(`
-services:
-  cache:
-    ports:
-      - "\${CACHE_PORT:-6379}:6379"
-`);
-
-    const canonical = {
-      COMPOSE_PROJECT_NAME: "grove-branch",
-      WEB_PORT: "8088",
-      API_PORT: "8089",
-      DB_PORT: "15432",
-      DB_SCHEMA: "myapp_branch",
-    };
-
-    const aliases = buildAliasMap(contract, canonical);
-
-    expect(aliases["CACHE_PORT"]).toBeUndefined();
   });
 });
 
@@ -214,34 +169,6 @@ services:
       true,
     );
     expect(result.values["DATABASE_URL"]).toBeUndefined();
-  });
-
-  test("does not implicitly passthrough expected vars when envContract is explicit", () => {
-    const contract = discoverComposeContractFromText(`
-services:
-  app:
-    environment:
-      FEATURE_FLAG: \${FEATURE_FLAG}
-`);
-
-    const result = resolveContractEnvVars(
-      contract,
-      {
-        COMPOSE_PROJECT_NAME: "grove-branch",
-        WEB_PORT: "8088",
-        API_PORT: "8089",
-        DB_PORT: "15432",
-        DB_SCHEMA: "myapp_branch",
-      },
-      {
-        FEATURE_FLAG: "on",
-      },
-      {
-        passthrough: [],
-      },
-    );
-
-    expect(result.values["FEATURE_FLAG"]).toBeUndefined();
   });
 });
 

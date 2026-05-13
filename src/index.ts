@@ -292,7 +292,7 @@ program
                 worktreePath,
                 groveConfig.envContract?.sourceEnvFiles ?? [".env"],
               )),
-              ...(opts.refreshEnv ? {} : existingEnv),
+              ...existingEnv,
             };
             const contractEnv = resolveContractEnvVars(
               contract,
@@ -446,6 +446,7 @@ docker
   .description("Start docker compose stack for a worktree")
   .option("--debug", "Enable debug output")
   .action(async (branch: string | undefined, opts: { debug?: boolean }) => {
+    const { execa } = await import("execa");
     try {
       const debug = Boolean(opts.debug || process.env.GROVE_DEBUG === "1");
       const logDebug = (message: string) => {
@@ -473,11 +474,52 @@ docker
         process.exit(1);
       }
 
+      const contract = await discoverComposeContract(wt.path);
+      const envVars = await readEnvFile(wt.path);
+      logDebug(
+        `compose expected vars: ${contract.expectedVars.join(", ") || "(none)"}`,
+      );
+      logDebug(
+        `compose port refs: ${contract.portRefs.length > 0 ? contract.portRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
+      );
+      const preflight = await preflightComposeEnv(
+        wt.path,
+        contract,
+        envVars,
+        config?.envContract,
+      );
+      if (!preflight.ok) {
+        console.error("Compose env preflight failed:");
+        for (const issue of preflight.issues) {
+          console.error(`- ${issue.message}`);
+          if (issue.details) console.error(`  ${issue.details}`);
+          if (issue.suggestion) console.error(`  fix: ${issue.suggestion}`);
+        }
+        process.exit(1);
+      }
+
+      for (const issue of preflight.issues.filter(
+        (i) => i.severity === "warning",
+      )) {
+        console.warn(`warning: ${issue.message}`);
+        if (issue.details) console.warn(`  ${issue.details}`);
+      }
+
       const { projectName } = wt.docker;
       console.log(`Starting ${projectName}…`);
-      const provider = await discoverProvider(wt.path, wt.branch);
-      logDebug(`provider: ${provider.name}`);
-      await provider.start();
+      const composeArgs = [
+        "compose",
+        "-p",
+        projectName,
+        "--env-file",
+        ".env.worktree",
+        "up",
+        "-d",
+        "--build",
+      ];
+      logDebug(`running in ${wt.path}`);
+      logDebug(`docker ${composeArgs.join(" ")}`);
+      await execa("docker", composeArgs, { cwd: wt.path });
       console.log(`✓ ${projectName} started`);
     } catch (err) {
       console.error((err as Error).message);

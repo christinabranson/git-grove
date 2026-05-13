@@ -149,118 +149,36 @@ export function discoverComposeContractFromText(raw: string): ComposeContract {
   const portRefs: ComposePortRef[] = [];
   const dbNameRefs: ComposeDbNameRef[] = [];
 
-  const lineIndent = (line: string): number => {
-    const match = line.match(/^\s*/);
-    return match ? match[0].length : 0;
-  };
-
   let currentService: string | undefined;
-  let servicesIndent: number | undefined;
-  let serviceIndent: number | undefined;
-  let portsIndent: number | undefined;
-  let environmentIndent: number | undefined;
   let inPorts = false;
   let inEnvironment = false;
 
   const lines = raw.split("\n");
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    const indent = lineIndent(line);
-
-    if (trimmed === "services:") {
-      servicesIndent = indent;
-      currentService = undefined;
-      serviceIndent = undefined;
+    const serviceMatch = line.match(/^\s{2}([a-zA-Z0-9_.-]+):\s*$/);
+    if (serviceMatch) {
+      currentService = serviceMatch[1];
       inPorts = false;
       inEnvironment = false;
-      portsIndent = undefined;
-      environmentIndent = undefined;
       continue;
     }
 
-    if (servicesIndent !== undefined) {
-      // Exiting the services section means we should stop service-scoped detection.
-      if (trimmed && indent <= servicesIndent && trimmed !== "services:") {
-        servicesIndent = undefined;
-        currentService = undefined;
-        serviceIndent = undefined;
-        inPorts = false;
-        inEnvironment = false;
-        portsIndent = undefined;
-        environmentIndent = undefined;
-      }
-    }
-
-    if (servicesIndent !== undefined) {
-      const serviceMatch = line.match(/^\s*([a-zA-Z0-9_.-]+):\s*$/);
-      if (
-        serviceMatch &&
-        indent > servicesIndent &&
-        serviceMatch[1] !== "ports" &&
-        serviceMatch[1] !== "environment"
-      ) {
-        currentService = serviceMatch[1];
-        serviceIndent = indent;
-        inPorts = false;
-        inEnvironment = false;
-        portsIndent = undefined;
-        environmentIndent = undefined;
-        continue;
-      }
-    }
-
-    if (serviceIndent !== undefined && trimmed && indent <= serviceIndent) {
-      currentService = undefined;
-      serviceIndent = undefined;
-      inPorts = false;
-      inEnvironment = false;
-      portsIndent = undefined;
-      environmentIndent = undefined;
-    }
-
-    if (
-      currentService &&
-      trimmed === "ports:" &&
-      indent > (serviceIndent ?? -1)
-    ) {
+    if (/^\s{4}ports:\s*$/.test(line)) {
       inPorts = true;
       inEnvironment = false;
-      portsIndent = indent;
-      environmentIndent = undefined;
       continue;
     }
 
-    if (
-      currentService &&
-      trimmed === "environment:" &&
-      indent > (serviceIndent ?? -1)
-    ) {
+    if (/^\s{4}environment:\s*$/.test(line)) {
       inEnvironment = true;
       inPorts = false;
-      environmentIndent = indent;
-      portsIndent = undefined;
       continue;
     }
 
-    if (
-      inPorts &&
-      portsIndent !== undefined &&
-      trimmed &&
-      indent <= portsIndent
-    ) {
+    if (/^\s{0,3}\S/.test(line)) {
       inPorts = false;
-      portsIndent = undefined;
-    }
-
-    if (
-      inEnvironment &&
-      environmentIndent !== undefined &&
-      trimmed &&
-      indent <= environmentIndent
-    ) {
       inEnvironment = false;
-      environmentIndent = undefined;
     }
 
     const vars = extractInterpolationVars(line);
@@ -540,7 +458,7 @@ export async function readSourceEnvFiles(
 
 function mapPortVarToCanonical(
   variable: string,
-): "WEB_PORT" | "API_PORT" | "DB_PORT" | undefined {
+): "WEB_PORT" | "API_PORT" | "DB_PORT" {
   const upper = variable.toUpperCase();
   if (
     /(DB|DATABASE|POSTGRES|PG).*PORT|PORT.*(DB|DATABASE|POSTGRES|PG)/.test(
@@ -556,14 +474,7 @@ function mapPortVarToCanonical(
   ) {
     return "API_PORT";
   }
-  if (
-    /(WEB|APP|FRONT|UI|CLIENT).*PORT|PORT.*(WEB|APP|FRONT|UI|CLIENT)/.test(
-      upper,
-    )
-  ) {
-    return "WEB_PORT";
-  }
-  return undefined;
+  return "WEB_PORT";
 }
 
 export function buildAliasMap(
@@ -577,7 +488,6 @@ export function buildAliasMap(
   for (const ref of contract.portRefs) {
     if (hasCanonical(ref.variable)) continue;
     const canonical = mapPortVarToCanonical(ref.variable);
-    if (!canonical) continue;
     if (hasCanonical(canonical))
       aliases[ref.variable] = canonicalValues[canonical];
   }
@@ -701,7 +611,6 @@ export function resolveContractEnvVars(
 
   for (const variable of contract.expectedVars) {
     if (hasValue(variable)) continue;
-    if (envContract !== undefined || strict) continue;
     if (hasSource(variable)) {
       setValue(variable, sourceEnv[variable]);
     }

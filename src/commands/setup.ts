@@ -171,6 +171,7 @@ async function regenerateEnvFromConfig(
       repoPath,
       config.envContract?.sourceEnvFiles ?? [".env"],
     )),
+    ...existingEnv,
   };
   const contractEnv = resolveContractEnvVars(
     contract,
