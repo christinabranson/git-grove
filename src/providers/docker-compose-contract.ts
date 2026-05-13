@@ -609,13 +609,6 @@ export function resolveContractEnvVars(
     });
   }
 
-  for (const variable of contract.expectedVars) {
-    if (hasValue(variable)) continue;
-    if (hasSource(variable)) {
-      setValue(variable, sourceEnv[variable]);
-    }
-  }
-
   for (const variable of required) {
     if (!hasValue(variable)) {
       issues.push({

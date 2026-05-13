@@ -170,6 +170,67 @@ services:
     );
     expect(result.values["DATABASE_URL"]).toBeUndefined();
   });
+
+  test("does not implicitly passthrough discovered compose vars", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    environment:
+      NODE_ENV: \${NODE_ENV}
+      POSTGIS_IMAGE: \${POSTGIS_IMAGE}
+`);
+
+    const result = resolveContractEnvVars(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-branch",
+        WEB_PORT: "8088",
+        API_PORT: "8089",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_branch",
+      },
+      {
+        NODE_ENV: "development",
+        POSTGIS_IMAGE: "postgis/postgis:17-3.5",
+      },
+    );
+
+    expect(result.values["NODE_ENV"]).toBeUndefined();
+    expect(result.values["POSTGIS_IMAGE"]).toBeUndefined();
+    expect(result.issues).toHaveLength(0);
+  });
+
+  test("copies passthrough vars only when explicitly configured", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    environment:
+      NODE_ENV: \${NODE_ENV}
+      POSTGIS_IMAGE: \${POSTGIS_IMAGE}
+`);
+
+    const result = resolveContractEnvVars(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-branch",
+        WEB_PORT: "8088",
+        API_PORT: "8089",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_branch",
+      },
+      {
+        NODE_ENV: "development",
+        POSTGIS_IMAGE: "postgis/postgis:17-3.5",
+      },
+      {
+        passthrough: ["NODE_ENV", "POSTGIS_IMAGE"],
+      },
+    );
+
+    expect(result.values["NODE_ENV"]).toBe("development");
+    expect(result.values["POSTGIS_IMAGE"]).toBe("postgis/postgis:17-3.5");
+    expect(result.issues).toHaveLength(0);
+  });
 });
 
 describe("renderEnvContent", () => {
