@@ -16,6 +16,39 @@ Agents contributing to this repository should prioritize:
 
 ---
 
+## Product Direction: Runtime-Agnostic By Design
+
+Grove should support many environment runtimes, not only Docker Compose.
+
+Current and expected runtime targets include:
+
+- Docker Compose
+- Kubernetes
+- Node or npm script based local processes
+- Custom shell workflows
+
+When implementing features, keep these principles:
+
+- Treat Docker as one provider, not the default architecture for all logic
+- Keep core CLI flows and shared models provider-neutral
+- Put runtime-specific behavior inside provider implementations
+- Prefer explicit provider config over auto-detection when both exist
+- Avoid hardcoding Docker-specific assumptions in shared command paths
+
+Provider extensibility expectations:
+
+- New runtimes should be addable without large command rewrites
+- Each provider should own start, stop, and status lifecycle behavior
+- Capability differences should be expressed explicitly (for example port discovery, logs, teardown safety)
+- Destructive operations must require explicit confirmation logic
+
+PR review guardrail for design drift:
+
+- Ask: does this change make non-Docker providers easier, unchanged, or harder to support?
+- If harder, refactor toward shared abstractions before merging when practical
+
+---
+
 ## Getting Started
 
 Install dependencies:
