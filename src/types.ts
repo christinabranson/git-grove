@@ -81,16 +81,53 @@ export interface GroveConfigProvider {
  *   ${project}      — project name from this config
  */
 export interface GroveConfigNaming {
-  /** docker compose -p value. Default: "grove-${branch_safe}" */
+  /** docker compose -p value. Default: "${project}-${branch_safe}" */
   composeProject?: string;
   /** docker compose -p value for the shared infrastructure stack. Required to use shared stack features. */
   sharedProject?: string;
   /** DB schema name. Default: "${project}_${branch_safe}" */
   dbSchema?: string;
+  /**
+   * Generic host-port mapping to emit into .env.worktree (e.g. WEB_PORT, DB_PORT, REDIS_PORT).
+   * Use "auto" to find a free host port at spin time.
+   */
+  ports?: Record<string, number | "auto">;
+  /** DB host port. "auto" finds a free port at spin time. Default: "auto" */
+  dbPort?: number | "auto";
   /** Web port. "auto" finds a free port at spin time. Default: "auto" */
   webPort?: number | "auto";
   /** API / secondary service port. Default: "auto" */
   apiPort?: number | "auto";
+}
+
+/**
+ * Contract for how Grove should populate non-canonical compose variables.
+ */
+export interface GroveEnvContract {
+  /**
+   * Fail when required or strict-checked variables cannot be resolved.
+   */
+  strict?: boolean;
+  /**
+   * Explicitly managed vars. Grove only sets these when it can deterministically compute a value.
+   */
+  managed?: string[];
+  /**
+   * Copy these vars from source env files (.env by default) or existing .env.worktree.
+   */
+  passthrough?: string[];
+  /**
+   * Template-derived vars, e.g. DATABASE_URL from other vars.
+   */
+  derived?: Record<string, string>;
+  /**
+   * Vars that must be present after rendering.
+   */
+  required?: string[];
+  /**
+   * Source env files for passthrough lookups. Defaults to [".env"].
+   */
+  sourceEnvFiles?: string[];
 }
 
 export interface GroveConfig {
@@ -102,8 +139,11 @@ export interface GroveConfig {
   providers: Record<string, GroveConfigProvider>;
   shared?: Record<string, boolean>;
   naming?: GroveConfigNaming;
+  envContract?: GroveEnvContract;
   worktrees?: {
     prefix?: string;
+    /** Default base branch used by `grove start --new` when --base is not provided. Default: "main" */
+    defaultBaseBranch?: string;
     /** Absolute path to place new worktrees. Overrides the default <repo-parent>/<repo-name>-worktrees. */
     root?: string;
   };
