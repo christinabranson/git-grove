@@ -23,6 +23,8 @@ describe("KeybindBar", () => {
   test("shows base keys when no worktree is selected", () => {
     const { lastFrame } = render(<KeybindBar worktree={null} />);
     const frame = lastFrame()!;
+    expect(frame).toContain("n");
+    expect(frame).toContain("new");
     expect(frame).toContain("s");
     expect(frame).toContain("sync");
     expect(frame).toContain("?");

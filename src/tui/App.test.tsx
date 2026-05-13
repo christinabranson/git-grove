@@ -5,6 +5,13 @@ import { render } from "./render-for-test.js";
 
 vi.mock("../data/worktrees.js", () => ({
   loadWorktrees: vi.fn(),
+  detectDefaultBranch: vi.fn().mockResolvedValue("main"),
+  resolveWorktreeRoot: vi.fn().mockReturnValue("/repo-worktrees"),
+  createWorktreeWithBase: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../data/groveConfig.js", () => ({
+  loadGroveConfig: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("./editor.js", () => ({
@@ -16,12 +23,14 @@ vi.mock("execa", () => ({
 }));
 
 import { App } from "./App.js";
-import { loadWorktrees } from "../data/worktrees.js";
+import {
+  loadWorktrees,
+  createWorktreeWithBase,
+} from "../data/worktrees.js";
 import type { Worktree } from "../types.js";
 
-const mockedLoadWorktrees = loadWorktrees as MockedFunction<
-  typeof loadWorktrees
->;
+const mockedLoadWorktrees = loadWorktrees as MockedFunction<typeof loadWorktrees>;
+const mockedCreateWorktreeWithBase = createWorktreeWithBase as MockedFunction<typeof createWorktreeWithBase>;
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   return {
@@ -297,5 +306,86 @@ describe("App — help view", () => {
     await wait();
     expect(lastFrame()).not.toContain("Keyboard Shortcuts");
     expect(lastFrame()).toContain("grove");
+  });
+});
+
+describe("App — new worktree flow", () => {
+  test("pressing n shows branch name prompt", async () => {
+    const { lastFrame, stdin } = render(
+      <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
+    );
+    stdin.write("n");
+    await wait();
+    expect(lastFrame()).toContain("branch name");
+  });
+
+  test("entering a branch name advances to base branch prompt", async () => {
+    const { lastFrame, stdin } = render(
+      <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
+    );
+    stdin.write("n");
+    await wait();
+    stdin.write("f");
+    stdin.write("o");
+    stdin.write("o");
+    await wait();
+    stdin.write("\r");
+    await wait();
+    expect(lastFrame()).toContain("base branch");
+  });
+
+  test("Esc at name step cancels and returns to main view", async () => {
+    const { lastFrame, stdin } = render(
+      <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
+    );
+    stdin.write("n");
+    await wait();
+    expect(lastFrame()).toContain("branch name");
+    stdin.write("");
+    await wait();
+    expect(lastFrame()).not.toContain("branch name");
+    expect(lastFrame()).toContain("sync");
+  });
+
+  test("Esc at base step cancels and returns to main view", async () => {
+    const { lastFrame, stdin } = render(
+      <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
+    );
+    stdin.write("n");
+    await wait();
+    stdin.write("f");
+    stdin.write("o");
+    stdin.write("o");
+    await wait();
+    stdin.write("\r");
+    await wait();
+    expect(lastFrame()).toContain("base branch");
+    stdin.write("");
+    await wait();
+    expect(lastFrame()).not.toContain("base branch");
+    expect(lastFrame()).toContain("sync");
+  });
+
+  test("submitting empty base calls createWorktreeWithBase with detected default", async () => {
+    mockedLoadWorktrees.mockResolvedValue({ worktrees: [makeWorktree()], ghWarning: null });
+    const { stdin } = render(
+      <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
+    );
+    stdin.write("n");
+    await wait();
+    stdin.write("f");
+    await wait();
+    stdin.write("o");
+    await wait();
+    stdin.write("\r");
+    await wait();
+    stdin.write("\r");
+    await wait(100);
+    expect(mockedCreateWorktreeWithBase).toHaveBeenCalledWith(
+      "/repo",
+      "fo",
+      expect.stringContaining("fo"),
+      "main",
+    );
   });
 });

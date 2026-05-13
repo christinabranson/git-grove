@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import path from "path";
 import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import { execa } from "execa";
@@ -8,7 +9,9 @@ import {
   loadWorktrees,
   detectDefaultBranch,
   resolveWorktreeRoot,
+  createWorktreeWithBase,
 } from "../data/worktrees.js";
+import { loadGroveConfig } from "../data/groveConfig.js";
 import { WorktreeList } from "./WorktreeList.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { CompactFootprint } from "./ChangeFootprint.js";
@@ -168,33 +171,19 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const handleNewWorktree = useCallback(
     async (name: string, base: string) => {
       try {
-        const { join } = await import("path");
-        const { mkdir, writeFile } = await import("fs/promises");
-        const { loadGroveConfig } = await import("../data/groveConfig.js");
-
         const groveConfig = await loadGroveConfig(repoPath);
         const worktreeRoot = resolveWorktreeRoot(
           repoPath,
           groveConfig?.worktrees?.root,
         );
         const resolvedBase =
-          base.trim() || (await detectDefaultBranch(repoPath));
-        const worktreePath = join(worktreeRoot, name.replace(/\//g, "-"));
+          base.trim() ||
+          groveConfig?.worktrees?.defaultBaseBranch ||
+          (await detectDefaultBranch(repoPath));
+        const worktreePath = path.join(worktreeRoot, name.replace(/\//g, "-"));
 
         flash(`creating ${name}…`);
-        await execa(
-          "git",
-          ["worktree", "add", "-b", name, worktreePath, resolvedBase],
-          { cwd: repoPath },
-        );
-
-        const groveMetaDir = join(worktreePath, ".grove");
-        await mkdir(groveMetaDir, { recursive: true });
-        await writeFile(
-          join(groveMetaDir, "meta.json"),
-          JSON.stringify({ baseBranch: resolvedBase }, null, 2),
-        );
-
+        await createWorktreeWithBase(repoPath, name, worktreePath, resolvedBase);
         flash(`created ${name}`);
         await handleSync();
       } catch (err) {
@@ -414,8 +403,13 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
             value={newWorktreeName}
             onChange={setNewWorktreeName}
             onSubmit={(val) => {
-              if (val.trim()) setNewWorktreeStep("base");
-              else setView("main");
+              const trimmed = val.trim();
+              if (trimmed) {
+                setNewWorktreeName(trimmed);
+                setNewWorktreeStep("base");
+              } else {
+                setView("main");
+              }
             }}
             placeholder="branch name..."
           />
