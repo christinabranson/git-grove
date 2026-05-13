@@ -12,7 +12,8 @@ const DEFAULT_COMPOSE_FILES = [
 
 const SHORT_SYNTAX_PORT_RE =
   /^\s*-\s*["']?(?:(?:\d{1,3}\.){3}\d{1,3}:)?\d{2,5}:\d{2,5}(?:\/(?:tcp|udp))?["']?\s*(?:#.*)?$/;
-const LONG_SYNTAX_PUBLISHED_RE = /^\s*published\s*:\s*\d{2,5}\s*(?:#.*)?$/;
+const LONG_SYNTAX_PUBLISHED_RE =
+  /^\s*published\s*:\s*["']?\d{2,5}["']?\s*(?:#.*)?$/;
 
 export interface HardcodedPortFinding {
   file: string;

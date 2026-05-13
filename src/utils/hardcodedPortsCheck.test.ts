@@ -73,6 +73,27 @@ describe("findHardcodedComposePortFindings", () => {
     });
   });
 
+  test("detects quoted long syntax published host ports", async () => {
+    await writeFile(
+      join(tmpDir, "compose.yaml"),
+      [
+        "services:",
+        "  redis:",
+        "    ports:",
+        "      - target: 6379",
+        '        published: "6379"',
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const findings = await findHardcodedComposePortFindings(tmpDir);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      file: "compose.yaml",
+      line: 5,
+    });
+  });
+
   test("includes configured extra compose files", async () => {
     await mkdir(join(tmpDir, "docker"), { recursive: true });
     await writeFile(
