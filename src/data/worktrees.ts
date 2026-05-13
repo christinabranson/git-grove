@@ -307,6 +307,13 @@ export async function loadWorktrees(
     fetchPRsByBranch(repoPath),
   ]);
 
+  let cwd = "";
+  try {
+    cwd = process.cwd();
+  } catch {
+    // cwd deleted/moved — no worktree will match, isCurrent stays false
+  }
+
   const worktrees = await Promise.all(
     raw.map(async (wt, idx) => {
       const branch = wt.branch || "(unknown)";
@@ -321,7 +328,7 @@ export async function loadWorktrees(
         branch,
         baseBranch,
         isMain: idx === 0,
-        isCurrent: false,
+        isCurrent: cwd === wt.path || cwd.startsWith(wt.path + path.sep),
         head: wt.head || "",
         docker,
         changeFootprint,
