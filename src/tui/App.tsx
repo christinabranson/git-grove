@@ -183,7 +183,12 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
         const worktreePath = path.join(worktreeRoot, name.replace(/\//g, "-"));
 
         flash(`creating ${name}…`);
-        await createWorktreeWithBase(repoPath, name, worktreePath, resolvedBase);
+        await createWorktreeWithBase(
+          repoPath,
+          name,
+          worktreePath,
+          resolvedBase,
+        );
         flash(`created ${name}`);
         await handleSync();
       } catch (err) {

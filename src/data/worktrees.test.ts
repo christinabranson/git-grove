@@ -260,14 +260,18 @@ describe("detectDefaultBranch", () => {
 
   test("falls back to local main when origin/HEAD not configured", async () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
-    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>);
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
     expect(await detectDefaultBranch("/repo")).toBe("main");
   });
 
   test("falls back to origin/main when local main is absent", async () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
     mockedExeca.mockRejectedValueOnce(new Error("no local main"));
-    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>);
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
     expect(await detectDefaultBranch("/repo")).toBe("main");
   });
 
@@ -275,7 +279,9 @@ describe("detectDefaultBranch", () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
     mockedExeca.mockRejectedValueOnce(new Error("no local main"));
     mockedExeca.mockRejectedValueOnce(new Error("no origin/main"));
-    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>);
+    mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
+      typeof execa
+    >);
     expect(await detectDefaultBranch("/repo")).toBe("master");
   });
 
@@ -288,21 +294,37 @@ describe("detectDefaultBranch", () => {
 describe("createWorktreeWithBase", () => {
   test("runs git worktree add with correct arguments", async () => {
     mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
-    await createWorktreeWithBase("/repo", "feature-foo", "/worktrees/feature-foo", "main");
+    await createWorktreeWithBase(
+      "/repo",
+      "feature-foo",
+      "/worktrees/feature-foo",
+      "main",
+    );
     expect(mockedExeca).toHaveBeenCalledWith(
       "git",
-      ["worktree", "add", "-b", "feature-foo", "/worktrees/feature-foo", "main"],
+      [
+        "worktree",
+        "add",
+        "-b",
+        "feature-foo",
+        "/worktrees/feature-foo",
+        "main",
+      ],
       { cwd: "/repo" },
     );
   });
 
   test("writes .grove/meta.json with the base branch", async () => {
     mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
-    await createWorktreeWithBase("/repo", "feature-foo", "/worktrees/feature-foo", "main");
-    expect(mockedMkdir).toHaveBeenCalledWith(
-      "/worktrees/feature-foo/.grove",
-      { recursive: true },
+    await createWorktreeWithBase(
+      "/repo",
+      "feature-foo",
+      "/worktrees/feature-foo",
+      "main",
     );
+    expect(mockedMkdir).toHaveBeenCalledWith("/worktrees/feature-foo/.grove", {
+      recursive: true,
+    });
     expect(mockedWriteFile).toHaveBeenCalledWith(
       "/worktrees/feature-foo/.grove/meta.json",
       JSON.stringify({ baseBranch: "main" }, null, 2),

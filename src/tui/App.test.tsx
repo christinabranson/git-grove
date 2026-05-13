@@ -23,14 +23,15 @@ vi.mock("execa", () => ({
 }));
 
 import { App } from "./App.js";
-import {
-  loadWorktrees,
-  createWorktreeWithBase,
-} from "../data/worktrees.js";
+import { loadWorktrees, createWorktreeWithBase } from "../data/worktrees.js";
 import type { Worktree } from "../types.js";
 
-const mockedLoadWorktrees = loadWorktrees as MockedFunction<typeof loadWorktrees>;
-const mockedCreateWorktreeWithBase = createWorktreeWithBase as MockedFunction<typeof createWorktreeWithBase>;
+const mockedLoadWorktrees = loadWorktrees as MockedFunction<
+  typeof loadWorktrees
+>;
+const mockedCreateWorktreeWithBase = createWorktreeWithBase as MockedFunction<
+  typeof createWorktreeWithBase
+>;
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   return {
@@ -367,7 +368,10 @@ describe("App — new worktree flow", () => {
   });
 
   test("submitting empty base calls createWorktreeWithBase with detected default", async () => {
-    mockedLoadWorktrees.mockResolvedValue({ worktrees: [makeWorktree()], ghWarning: null });
+    mockedLoadWorktrees.mockResolvedValue({
+      worktrees: [makeWorktree()],
+      ghWarning: null,
+    });
     const { stdin } = render(
       <App repoPath="/repo" initialWorktrees={[makeWorktree()]} />,
     );

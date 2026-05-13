@@ -395,11 +395,9 @@ export async function createWorktreeWithBase(
   worktreePath: string,
   base: string,
 ): Promise<void> {
-  await execa(
-    "git",
-    ["worktree", "add", "-b", branch, worktreePath, base],
-    { cwd: repoPath },
-  );
+  await execa("git", ["worktree", "add", "-b", branch, worktreePath, base], {
+    cwd: repoPath,
+  });
   const groveMetaDir = path.join(worktreePath, ".grove");
   await mkdir(groveMetaDir, { recursive: true });
   await writeFile(
