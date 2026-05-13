@@ -4,7 +4,11 @@ import TextInput from "ink-text-input";
 import { execa } from "execa";
 import type { Worktree } from "../types.js";
 import { openInEditor } from "./editor.js";
-import { loadWorktrees, detectDefaultBranch, resolveWorktreeRoot } from "../data/worktrees.js";
+import {
+  loadWorktrees,
+  detectDefaultBranch,
+  resolveWorktreeRoot,
+} from "../data/worktrees.js";
 import { WorktreeList } from "./WorktreeList.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { CompactFootprint } from "./ChangeFootprint.js";
@@ -33,7 +37,8 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
   const [view, setView] = useState<AppView>("main");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [newWorktreeStep, setNewWorktreeStep] = useState<NewWorktreeStep>("name");
+  const [newWorktreeStep, setNewWorktreeStep] =
+    useState<NewWorktreeStep>("name");
   const [newWorktreeName, setNewWorktreeName] = useState("");
   const [newWorktreeBase, setNewWorktreeBase] = useState("");
 
@@ -160,30 +165,44 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     }
   }, [selectedWorktree, flash, handleSync]);
 
-  const handleNewWorktree = useCallback(async (name: string, base: string) => {
-    try {
-      const { join } = await import("path");
-      const { mkdir, writeFile } = await import("fs/promises");
-      const { loadGroveConfig } = await import("../data/groveConfig.js");
+  const handleNewWorktree = useCallback(
+    async (name: string, base: string) => {
+      try {
+        const { join } = await import("path");
+        const { mkdir, writeFile } = await import("fs/promises");
+        const { loadGroveConfig } = await import("../data/groveConfig.js");
 
-      const groveConfig = await loadGroveConfig(repoPath);
-      const worktreeRoot = resolveWorktreeRoot(repoPath, groveConfig?.worktrees?.root);
-      const resolvedBase = base.trim() || (await detectDefaultBranch(repoPath));
-      const worktreePath = join(worktreeRoot, name.replace(/\//g, "-"));
+        const groveConfig = await loadGroveConfig(repoPath);
+        const worktreeRoot = resolveWorktreeRoot(
+          repoPath,
+          groveConfig?.worktrees?.root,
+        );
+        const resolvedBase =
+          base.trim() || (await detectDefaultBranch(repoPath));
+        const worktreePath = join(worktreeRoot, name.replace(/\//g, "-"));
 
-      flash(`creating ${name}…`);
-      await execa("git", ["worktree", "add", "-b", name, worktreePath, resolvedBase], { cwd: repoPath });
+        flash(`creating ${name}…`);
+        await execa(
+          "git",
+          ["worktree", "add", "-b", name, worktreePath, resolvedBase],
+          { cwd: repoPath },
+        );
 
-      const groveMetaDir = join(worktreePath, ".grove");
-      await mkdir(groveMetaDir, { recursive: true });
-      await writeFile(join(groveMetaDir, "meta.json"), JSON.stringify({ baseBranch: resolvedBase }, null, 2));
+        const groveMetaDir = join(worktreePath, ".grove");
+        await mkdir(groveMetaDir, { recursive: true });
+        await writeFile(
+          join(groveMetaDir, "meta.json"),
+          JSON.stringify({ baseBranch: resolvedBase }, null, 2),
+        );
 
-      flash(`created ${name}`);
-      await handleSync();
-    } catch (err) {
-      flash(`create failed: ${(err as Error).message}`);
-    }
-  }, [repoPath, flash, handleSync]);
+        flash(`created ${name}`);
+        await handleSync();
+      } catch (err) {
+        flash(`create failed: ${(err as Error).message}`);
+      }
+    },
+    [repoPath, flash, handleSync],
+  );
 
   useInput((input, key) => {
     if (filterActive) {
@@ -390,7 +409,7 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
         />
       ) : view === "newWorktree" && newWorktreeStep === "name" ? (
         <Box paddingX={1}>
-          <Text color="cyan">new  </Text>
+          <Text color="cyan">new </Text>
           <TextInput
             value={newWorktreeName}
             onChange={setNewWorktreeName}
