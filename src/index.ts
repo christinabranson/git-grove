@@ -8,6 +8,7 @@ import {
   loadWorktrees,
   detectRepoRoot,
   resolveWorktreeRoot,
+  createWorktreeWithBase,
 } from "./data/worktrees.js";
 import { printStatus } from "./commands/status.js";
 import { App } from "./tui/App.js";
@@ -231,19 +232,7 @@ program
               repoGroveConfig?.worktrees?.defaultBaseBranch ??
               "main";
             if (!opts.json) console.log(`  branching off ${base}`);
-            await execa(
-              "git",
-              ["worktree", "add", "-b", branch, worktreePath, base],
-              { cwd: repoPath },
-            );
-            // Record base branch so grove can display it later
-            const groveMetaDir = pathMod.join(worktreePath, ".grove");
-            const { mkdir } = await import("fs/promises");
-            await mkdir(groveMetaDir, { recursive: true });
-            await writeFile(
-              pathMod.join(groveMetaDir, "meta.json"),
-              JSON.stringify({ baseBranch: base }, null, 2),
-            );
+            await createWorktreeWithBase(repoPath, branch, worktreePath, base);
           } else {
             await execa("git", ["fetch", "origin", branch], { cwd: repoPath });
             await execa("git", ["worktree", "add", worktreePath, branch], {
