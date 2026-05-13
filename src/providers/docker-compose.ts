@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import path from "path";
 import type { GroveProvider } from "./types.js";
 import type { GroveEnvironment } from "../types.js";
+import { loadGroveConfig } from "../data/groveConfig.js";
 import {
   discoverComposeContract,
   preflightComposeEnv,
@@ -91,6 +92,7 @@ export class DockerComposeProvider implements GroveProvider {
   async start(): Promise<GroveEnvironment> {
     const vars = await parseEnvAgentAsync(this.worktreePath);
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
+    const config = await loadGroveConfig(this.worktreePath);
 
     const contract = await discoverComposeContract(this.worktreePath);
     const envVars = await readEnvFile(this.worktreePath);
@@ -98,6 +100,7 @@ export class DockerComposeProvider implements GroveProvider {
       this.worktreePath,
       contract,
       envVars,
+      config?.envContract,
     );
     if (!preflight.ok) {
       const lines = ["Compose env preflight failed:"];

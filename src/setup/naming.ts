@@ -218,7 +218,7 @@ export async function buildCanonicalEnvVars(
       const duplicateKey = configuredByPort.get(value);
       if (duplicateKey) {
         throw new Error(
-          `Port ${value} is configured for both ${duplicateKey} and ${key}.`,
+          `Port ${value} is configured for both ${duplicateKey} and ${key}. Update .grove/config.json naming.ports or naming.webPort/naming.apiPort/naming.dbPort.`,
         );
       }
       if (dockerReserved.has(value)) {

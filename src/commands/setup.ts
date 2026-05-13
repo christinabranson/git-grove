@@ -11,8 +11,10 @@ import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
 import { execa } from "execa";
 import { loadGroveConfig } from "../data/groveConfig.js";
 import {
-  buildAliasMap,
   discoverComposeContract,
+  readEnvFile,
+  readSourceEnvFiles,
+  resolveContractEnvVars,
   renderEnvContent,
 } from "../providers/docker-compose-contract.js";
 
@@ -156,11 +158,41 @@ async function regenerateEnvFromConfig(
   const branch = await resolveCurrentBranch(repoPath);
   const envPath = path.join(repoPath, ".env.worktree");
   debugLog(debug, `branch resolved as: ${branch}`);
+
+  const existingEnv = await readEnvFile(repoPath);
+  const existingWebPort = /^\d+$/.test(existingEnv["WEB_PORT"] ?? "")
+    ? Number.parseInt(existingEnv["WEB_PORT"], 10)
+    : undefined;
   const expanded = expandNaming(config, branch);
-  const canonicalEnv = await buildCanonicalEnvVars(expanded);
+  const canonicalEnv = await buildCanonicalEnvVars(expanded, existingWebPort);
   const contract = await discoverComposeContract(repoPath);
-  const aliasEnv = buildAliasMap(contract, canonicalEnv);
-  const envContent = renderEnvContent(canonicalEnv, aliasEnv);
+  const sourceEnv = {
+    ...(await readSourceEnvFiles(
+      repoPath,
+      config.envContract?.sourceEnvFiles ?? [".env"],
+    )),
+    ...existingEnv,
+  };
+  const contractEnv = resolveContractEnvVars(
+    contract,
+    canonicalEnv,
+    sourceEnv,
+    config.envContract,
+  );
+  const envErrors = contractEnv.issues.filter((i) => i.severity === "error");
+  if (envErrors.length > 0) {
+    throw new Error(
+      [
+        "Env contract resolution failed:",
+        ...envErrors.map((issue) =>
+          issue.details
+            ? `- ${issue.message} (${issue.details})`
+            : `- ${issue.message}`,
+        ),
+      ].join("\n"),
+    );
+  }
+  const envContent = renderEnvContent(canonicalEnv, contractEnv.values);
   debugLog(
     debug,
     `contract expected vars: ${contract.expectedVars.length > 0 ? contract.expectedVars.join(", ") : "(none)"}`,
@@ -183,7 +215,9 @@ async function regenerateEnvFromConfig(
 
   console.log(chalk.green("✓ Regenerated .env.worktree"));
   console.log(chalk.gray(`  branch: ${branch}`));
-  const aliasKeys = Object.keys(aliasEnv).sort((a, b) => a.localeCompare(b));
+  const aliasKeys = Object.keys(contractEnv.values).sort((a, b) =>
+    a.localeCompare(b),
+  );
   console.log(
     chalk.gray(
       `  aliases: ${aliasKeys.length > 0 ? aliasKeys.join(", ") : "none"}`,
@@ -196,6 +230,12 @@ async function regenerateEnvFromConfig(
     console.log(
       chalk.yellow(`  warning: compose contract detection: ${warning}`),
     );
+  }
+  for (const issue of contractEnv.issues.filter(
+    (i) => i.severity === "warning",
+  )) {
+    console.log(chalk.yellow(`  warning: env contract: ${issue.message}`));
+    if (issue.details) console.log(chalk.gray(`    ${issue.details}`));
   }
 }
 

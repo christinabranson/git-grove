@@ -6,6 +6,7 @@ import {
   extractInterpolationVars,
   formatDoctorEnvReport,
   preflightComposeEnv,
+  resolveContractEnvVars,
   renderEnvContent,
 } from "./docker-compose-contract.js";
 
@@ -73,7 +74,7 @@ services:
 });
 
 describe("buildAliasMap", () => {
-  test("maps discovered aliases to canonical values", () => {
+  test("maps discovered port aliases to canonical values", () => {
     const contract = discoverComposeContractFromText(`
 services:
   app:
@@ -98,7 +99,76 @@ services:
 
     expect(aliases["APP_PORT"]).toBe("8088");
     expect(aliases["POSTGRES_PORT"]).toBe("15432");
-    expect(aliases["POSTGRES_DB"]).toBe("myapp_branch");
+    expect(aliases["POSTGRES_DB"]).toBeUndefined();
+  });
+});
+
+describe("resolveContractEnvVars", () => {
+  test("supports derived and passthrough vars from explicit env contract", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    environment:
+      DATABASE_URL: \${DATABASE_URL}
+      FEATURE_FLAG: \${FEATURE_FLAG}
+`);
+
+    const result = resolveContractEnvVars(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-branch",
+        WEB_PORT: "8088",
+        API_PORT: "8089",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_branch",
+      },
+      {
+        POSTGRES_USER: "postgres",
+        POSTGRES_PASSWORD: "dev",
+        POSTGRES_DB: "app",
+        FEATURE_FLAG: "on",
+      },
+      {
+        derived: {
+          DATABASE_URL:
+            "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@cooh-db:5432/${POSTGRES_DB}?schema=${DB_SCHEMA}",
+        },
+        passthrough: ["FEATURE_FLAG"],
+      },
+    );
+
+    expect(result.values["DATABASE_URL"]).toContain("schema=myapp_branch");
+    expect(result.values["FEATURE_FLAG"]).toBe("on");
+    expect(result.issues).toHaveLength(0);
+  });
+
+  test("in strict mode unresolved expected vars are errors", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    environment:
+      DATABASE_URL: \${DATABASE_URL}
+`);
+
+    const result = resolveContractEnvVars(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-branch",
+        WEB_PORT: "8088",
+        API_PORT: "8089",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_branch",
+      },
+      {},
+      {
+        strict: true,
+      },
+    );
+
+    expect(result.issues.some((issue) => issue.severity === "error")).toBe(
+      true,
+    );
+    expect(result.values["DATABASE_URL"]).toBeUndefined();
   });
 });
 
@@ -150,7 +220,7 @@ describe("analyzeResolvedPorts", () => {
 });
 
 describe("preflightComposeEnv", () => {
-  test("treats expectedVars as required compose variables", async () => {
+  test("requires expectedVars in strict mode", async () => {
     const result = await preflightComposeEnv(
       process.cwd(),
       {
@@ -161,6 +231,7 @@ describe("preflightComposeEnv", () => {
         warnings: [],
       },
       {},
+      { strict: true },
     );
 
     expect(

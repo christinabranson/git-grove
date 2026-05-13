@@ -154,7 +154,9 @@ Proposed .grove/config.json:
 Write .grove/config.json? (y/N)
 ```
 
-Grove only writes `.grove/config.json`. It never touches `docker-compose.yml`, `package.json`, `.env`, or any other project file.
+By default, `grove setup` only writes `.grove/config.json`.
+
+When you pass `--refresh-env`, Grove also regenerates `.env.worktree` in the current worktree using naming rules plus env contract resolution.
 
 ### Flags
 
@@ -208,9 +210,55 @@ For arbitrary services (redis, localstack, mailhog, etc.), prefer `naming.ports`
 Grove inspects your Compose contract and generates compatibility aliases automatically.
 
 - Canonical Grove keys remain the source of truth (`WEB_PORT`, `API_PORT`, `DB_PORT`, `DB_SCHEMA`, `COMPOSE_PROJECT_NAME`).
-- If Compose expects alternative keys (for example `APP_PORT`, `POSTGRES_PORT`, `POSTGRES_DB`), Grove adds those aliases to `.env.worktree` with matching values.
+- If Compose expects alternative **port/project** keys (for example `APP_PORT` or `POSTGRES_PORT`), Grove adds deterministic aliases to `.env.worktree` with matching values.
+- Grove does **not** guess semantic or credential-like values (for example `DATABASE_URL`, `POSTGRES_PASSWORD`, `DB_USER`). Configure those via `envContract` templates or passthrough rules.
 - Detection uses `docker compose config --no-interpolate --format json` when available, falls back to Compose text scanning, and also reads `docker compose config --variables` when supported.
 - If Docker CLI is unavailable during detection, Grove warns and continues with existing behavior.
+
+### Dynamic vars and envContract
+
+Grove treats environment variables in classes so dynamic values stay predictable and safe:
+
+- `managed`: Grove-owned deterministic values (for example ports and project name)
+- `derived`: rendered from explicit templates
+- `passthrough`: copied unchanged from source env files
+- `required`: must be present after rendering
+
+Recommended baseline:
+
+- Let Grove manage deterministic infra vars (`*_PORT`, `COMPOSE_PROJECT_NAME`, and optionally `DB_SCHEMA`).
+- Keep semantic/secret vars template-driven or passthrough.
+- Avoid heuristic generation for app-level vars such as `DATABASE_URL`.
+
+Example:
+
+```json
+{
+  "envContract": {
+    "strict": true,
+    "passthrough": [
+      "POSTGRES_USER",
+      "POSTGRES_PASSWORD",
+      "POSTGRES_DB",
+      "FEATURE_FLAG"
+    ],
+    "derived": {
+      "DATABASE_URL": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=${DB_SCHEMA}"
+    },
+    "required": ["DATABASE_URL"],
+    "sourceEnvFiles": [".env"]
+  }
+}
+```
+
+Resolution behavior:
+
+- Deterministic aliases are created for port/project vars discovered in Compose.
+- `passthrough` vars are copied from source env files (default: `.env`) and existing `.env.worktree` values.
+- `derived` vars are rendered only from explicit templates.
+- If a derived template cannot be fully rendered:
+  - non-strict mode: Grove keeps an existing source value when available and warns
+  - strict mode (or `required`): Grove fails with an actionable error
 
 ---
 
@@ -293,6 +341,15 @@ For full control over how Grove manages environments, add `.grove/config.json` t
     "webPort": "auto",
     "apiPort": "auto"
   },
+  "envContract": {
+    "strict": true,
+    "passthrough": ["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"],
+    "derived": {
+      "DATABASE_URL": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=${DB_SCHEMA}"
+    },
+    "required": ["DATABASE_URL"],
+    "sourceEnvFiles": [".env"]
+  },
   "worktrees": {
     "root": "/Users/you/worktrees"
   }
@@ -315,6 +372,7 @@ When this file is present, Grove uses it instead of inferring the environment. Y
 | ----------------------------- | -------------------------------- | ------------------------------------------------------------- |
 | `sharedComposeFile`           | `compose.shared.yaml`            | Path to the shared infrastructure compose file                |
 | `editor`                      | auto-detected                    | Editor to open with `grove open` / `o` key                    |
+| `envContract`                 | unset                            | Dynamic env var policy (managed/derived/passthrough/required) |
 | `worktrees.root`              | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed                                |
 | `worktrees.defaultBaseBranch` | `main`                           | Default base for `grove start --new` when `--base` is omitted |
 

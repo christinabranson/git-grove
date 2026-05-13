@@ -100,6 +100,36 @@ export interface GroveConfigNaming {
   apiPort?: number | "auto";
 }
 
+/**
+ * Contract for how Grove should populate non-canonical compose variables.
+ */
+export interface GroveEnvContract {
+  /**
+   * Fail when required or strict-checked variables cannot be resolved.
+   */
+  strict?: boolean;
+  /**
+   * Explicitly managed vars. Grove only sets these when it can deterministically compute a value.
+   */
+  managed?: string[];
+  /**
+   * Copy these vars from source env files (.env by default) or existing .env.worktree.
+   */
+  passthrough?: string[];
+  /**
+   * Template-derived vars, e.g. DATABASE_URL from other vars.
+   */
+  derived?: Record<string, string>;
+  /**
+   * Vars that must be present after rendering.
+   */
+  required?: string[];
+  /**
+   * Source env files for passthrough lookups. Defaults to [".env"].
+   */
+  sourceEnvFiles?: string[];
+}
+
 export interface GroveConfig {
   enabled: boolean;
   project: string;
@@ -109,6 +139,7 @@ export interface GroveConfig {
   providers: Record<string, GroveConfigProvider>;
   shared?: Record<string, boolean>;
   naming?: GroveConfigNaming;
+  envContract?: GroveEnvContract;
   worktrees?: {
     prefix?: string;
     /** Default base branch used by `grove start --new` when --base is not provided. Default: "main" */

@@ -25,11 +25,12 @@ import { runSetup } from "./commands/setup.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
 import { warnIfHardcodedComposePorts } from "./utils/hardcodedPortsCheck.js";
 import {
-  buildAliasMap,
   discoverComposeContract,
   formatDoctorEnvReport,
   preflightComposeEnv,
   readEnvFile,
+  readSourceEnvFiles,
+  resolveContractEnvVars,
   renderEnvContent,
 } from "./providers/docker-compose-contract.js";
 import type { PresetName } from "./setup/presets.js";
@@ -276,14 +277,51 @@ program
                   : "Generating .env.worktree from grove config…",
               );
             }
+            const existingEnv = await readEnvFile(worktreePath);
+            const existingWebPort = /^\d+$/.test(existingEnv["WEB_PORT"] ?? "")
+              ? Number.parseInt(existingEnv["WEB_PORT"], 10)
+              : undefined;
             const expanded = expandNaming(groveConfig, branch);
-            const canonicalEnv = await buildCanonicalEnvVars(expanded);
+            const canonicalEnv = await buildCanonicalEnvVars(
+              expanded,
+              existingWebPort,
+            );
             const contract = await discoverComposeContract(worktreePath);
-            const aliasEnv = buildAliasMap(contract, canonicalEnv);
-            const envContent = renderEnvContent(canonicalEnv, aliasEnv);
+            const sourceEnv = {
+              ...(await readSourceEnvFiles(
+                worktreePath,
+                groveConfig.envContract?.sourceEnvFiles ?? [".env"],
+              )),
+              ...existingEnv,
+            };
+            const contractEnv = resolveContractEnvVars(
+              contract,
+              canonicalEnv,
+              sourceEnv,
+              groveConfig.envContract,
+            );
+            const envErrors = contractEnv.issues.filter(
+              (issue) => issue.severity === "error",
+            );
+            if (envErrors.length > 0) {
+              throw new Error(
+                [
+                  "Env contract resolution failed:",
+                  ...envErrors.map((issue) =>
+                    issue.details
+                      ? `- ${issue.message} (${issue.details})`
+                      : `- ${issue.message}`,
+                  ),
+                ].join("\n"),
+              );
+            }
+            const envContent = renderEnvContent(
+              canonicalEnv,
+              contractEnv.values,
+            );
             await writeFile(envAgentPath, envContent, "utf-8");
             if (!opts.json) {
-              const aliasKeys = Object.keys(aliasEnv).sort((a, b) =>
+              const aliasKeys = Object.keys(contractEnv.values).sort((a, b) =>
                 a.localeCompare(b),
               );
               console.log(
@@ -300,6 +338,15 @@ program
                     `  warning: compose contract detection: ${warning}`,
                   ),
                 );
+              }
+              for (const issue of contractEnv.issues.filter(
+                (issue) => issue.severity === "warning",
+              )) {
+                console.log(
+                  chalk.yellow(`  warning: env contract: ${issue.message}`),
+                );
+                if (issue.details)
+                  console.log(chalk.gray(`    ${issue.details}`));
               }
             }
           }
@@ -435,7 +482,12 @@ docker
       logDebug(
         `compose port refs: ${contract.portRefs.length > 0 ? contract.portRefs.map((r) => `${r.service ?? "?"}:${r.variable}`).join(", ") : "(none)"}`,
       );
-      const preflight = await preflightComposeEnv(wt.path, contract, envVars);
+      const preflight = await preflightComposeEnv(
+        wt.path,
+        contract,
+        envVars,
+        config?.envContract,
+      );
       if (!preflight.ok) {
         console.error("Compose env preflight failed:");
         for (const issue of preflight.issues) {
@@ -899,7 +951,14 @@ doctor
 
       const contract = await discoverComposeContract(wt.path);
       const envVars = await readEnvFile(wt.path);
-      const preflight = await preflightComposeEnv(wt.path, contract, envVars);
+      const wtConfig =
+        (await loadGroveConfig(wt.path)) ?? (await loadGroveConfig(repoPath));
+      const preflight = await preflightComposeEnv(
+        wt.path,
+        contract,
+        envVars,
+        wtConfig?.envContract,
+      );
 
       console.log(formatDoctorEnvReport(contract, envVars, preflight));
       if (!preflight.ok) process.exit(1);

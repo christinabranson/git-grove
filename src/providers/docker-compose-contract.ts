@@ -2,6 +2,7 @@ import { execa } from "execa";
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import path from "path";
+import type { GroveEnvContract } from "../types.js";
 
 const COMPOSE_FILES = [
   "compose.yaml",
@@ -49,6 +50,17 @@ export interface PreflightResult {
     hostPort: number;
     targetPort?: number;
   }>;
+}
+
+export interface EnvResolutionIssue {
+  severity: "error" | "warning";
+  message: string;
+  details?: string;
+}
+
+export interface EnvResolutionResult {
+  values: Record<string, string>;
+  issues: EnvResolutionIssue[];
 }
 
 function uniqSorted(values: Iterable<string>): string[] {
@@ -177,9 +189,6 @@ export function discoverComposeContractFromText(raw: string): ComposeContract {
       }
       if (inPorts || isPortLikeVar(variable)) {
         pushPortRef(portRefs, variable, currentService, "text-scan");
-      }
-      if (inEnvironment && isDbLikeVar(variable)) {
-        pushDbRef(dbNameRefs, variable, currentService, "text-scan");
       }
       if (inEnvironment && isDbNameLikeVar(variable)) {
         pushDbRef(dbNameRefs, variable, currentService, "text-scan");
@@ -433,6 +442,20 @@ export async function readEnvFile(
   return parseEnvContent(raw);
 }
 
+export async function readSourceEnvFiles(
+  worktreePath: string,
+  fileNames: string[] = [".env"],
+): Promise<Record<string, string>> {
+  const merged: Record<string, string> = {};
+  for (const fileName of fileNames) {
+    const filePath = path.join(worktreePath, fileName);
+    if (!existsSync(filePath)) continue;
+    const raw = await readFile(filePath, "utf-8");
+    Object.assign(merged, parseEnvContent(raw));
+  }
+  return merged;
+}
+
 function mapPortVarToCanonical(
   variable: string,
 ): "WEB_PORT" | "API_PORT" | "DB_PORT" {
@@ -454,10 +477,6 @@ function mapPortVarToCanonical(
   return "WEB_PORT";
 }
 
-function mapDbVarToCanonical(variable: string): "DB_SCHEMA" {
-  return "DB_SCHEMA";
-}
-
 export function buildAliasMap(
   contract: ComposeContract,
   canonicalValues: Record<string, string>,
@@ -473,13 +492,6 @@ export function buildAliasMap(
       aliases[ref.variable] = canonicalValues[canonical];
   }
 
-  for (const ref of contract.dbNameRefs) {
-    if (hasCanonical(ref.variable)) continue;
-    const canonical = mapDbVarToCanonical(ref.variable);
-    if (hasCanonical(canonical))
-      aliases[ref.variable] = canonicalValues[canonical];
-  }
-
   for (const variable of contract.projectNameVars) {
     if (variable === "COMPOSE_PROJECT_NAME" && canonicalValues[variable])
       continue;
@@ -491,6 +503,145 @@ export function buildAliasMap(
   return Object.fromEntries(
     Object.entries(aliases).sort(([a], [b]) => a.localeCompare(b)),
   );
+}
+
+function renderTemplate(
+  template: string,
+  context: Record<string, string>,
+): { value?: string; missing: string[] } {
+  const missing: string[] = [];
+  const value = template.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (_, key) => {
+    if (Object.prototype.hasOwnProperty.call(context, key)) {
+      return context[key];
+    }
+    missing.push(key);
+    return `\${${key}}`;
+  });
+  return { value: missing.length === 0 ? value : undefined, missing };
+}
+
+export function resolveContractEnvVars(
+  contract: ComposeContract,
+  canonicalValues: Record<string, string>,
+  sourceEnv: Record<string, string>,
+  envContract?: GroveEnvContract,
+): EnvResolutionResult {
+  const strict = Boolean(envContract?.strict);
+  const required = new Set(envContract?.required ?? []);
+  const managed = new Set(envContract?.managed ?? []);
+  const passthrough = new Set(envContract?.passthrough ?? []);
+  const derived = envContract?.derived ?? {};
+  const issues: EnvResolutionIssue[] = [];
+  const values: Record<string, string> = {};
+
+  const hasCanonical = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(canonicalValues, key);
+  const hasValue = (key: string): boolean =>
+    hasCanonical(key) || Object.prototype.hasOwnProperty.call(values, key);
+  const hasSource = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(sourceEnv, key);
+  const setValue = (key: string, value: string): void => {
+    if (hasCanonical(key)) return;
+    values[key] = value;
+  };
+
+  const deterministicAliases = buildAliasMap(contract, canonicalValues);
+  for (const [key, value] of Object.entries(deterministicAliases)) {
+    setValue(key, value);
+  }
+
+  for (const variable of managed) {
+    if (hasCanonical(variable)) {
+      setValue(variable, canonicalValues[variable]);
+      continue;
+    }
+    issues.push({
+      severity: required.has(variable) || strict ? "error" : "warning",
+      message: `Managed env var cannot be computed: ${variable}`,
+      details:
+        "Add a deterministic source in Grove config (for example naming.ports or naming templates), or remove it from envContract.managed.",
+    });
+  }
+
+  for (const variable of passthrough) {
+    if (hasValue(variable)) continue;
+    if (hasSource(variable)) {
+      setValue(variable, sourceEnv[variable]);
+      continue;
+    }
+    issues.push({
+      severity: required.has(variable) || strict ? "error" : "warning",
+      message: `Passthrough env var not found in source env: ${variable}`,
+      details:
+        "Ensure the variable exists in .env, .env.worktree, or envContract.sourceEnvFiles.",
+    });
+  }
+
+  for (const [variable, template] of Object.entries(derived)) {
+    if (hasValue(variable)) continue;
+
+    const templateContext: Record<string, string> = {
+      ...sourceEnv,
+      ...canonicalValues,
+      ...values,
+    };
+    const rendered = renderTemplate(template, templateContext);
+    if (rendered.value !== undefined) {
+      setValue(variable, rendered.value);
+      continue;
+    }
+
+    const fallback = hasSource(variable) ? sourceEnv[variable] : undefined;
+    if (fallback !== undefined && !strict && !required.has(variable)) {
+      setValue(variable, fallback);
+      issues.push({
+        severity: "warning",
+        message: `Derived env var ${variable} could not be fully rendered; keeping existing source value`,
+        details: `Missing template vars: ${rendered.missing.join(", ")}`,
+      });
+      continue;
+    }
+
+    issues.push({
+      severity: strict || required.has(variable) ? "error" : "warning",
+      message: `Derived env var ${variable} could not be rendered`,
+      details: `Missing template vars: ${rendered.missing.join(", ")}`,
+    });
+  }
+
+  for (const variable of contract.expectedVars) {
+    if (hasValue(variable)) continue;
+    if (hasSource(variable)) {
+      setValue(variable, sourceEnv[variable]);
+    }
+  }
+
+  for (const variable of required) {
+    if (!hasValue(variable)) {
+      issues.push({
+        severity: "error",
+        message: `Required env var could not be resolved: ${variable}`,
+      });
+    }
+  }
+
+  if (strict) {
+    for (const variable of contract.expectedVars) {
+      if (!hasValue(variable)) {
+        issues.push({
+          severity: "error",
+          message: `Strict env contract: unresolved compose variable ${variable}`,
+        });
+      }
+    }
+  }
+
+  return {
+    values: Object.fromEntries(
+      Object.entries(values).sort(([a], [b]) => a.localeCompare(b)),
+    ),
+    issues,
+  };
 }
 
 export function renderEnvContent(
@@ -654,17 +805,20 @@ export async function preflightComposeEnv(
   worktreePath: string,
   contract: ComposeContract,
   envVars: Record<string, string>,
+  envContract?: GroveEnvContract,
 ): Promise<PreflightResult> {
   const issues: PreflightIssue[] = [];
   const projectName = envVars["COMPOSE_PROJECT_NAME"];
   const hasEnvVar = (key: string): boolean =>
     Object.prototype.hasOwnProperty.call(envVars, key);
+  const strict = Boolean(envContract?.strict);
 
   const requiredVars = new Set<string>([
-    ...contract.expectedVars,
+    ...(strict ? contract.expectedVars : []),
     ...contract.portRefs.map((r) => r.variable),
-    ...contract.dbNameRefs.map((r) => r.variable),
     ...contract.projectNameVars,
+    ...(envContract?.required ?? []),
+    ...Object.keys(envContract?.derived ?? {}),
   ]);
 
   for (const variable of requiredVars) {
