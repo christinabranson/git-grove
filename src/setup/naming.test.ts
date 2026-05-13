@@ -3,6 +3,7 @@ import {
   branchSafe,
   expandNaming,
   buildEnvAgent,
+  buildCanonicalEnvVars,
   extractPublishedHostPorts,
 } from "./naming.js";
 import type { ExpandedNaming } from "./naming.js";
@@ -129,6 +130,31 @@ describe("expandNaming", () => {
     });
   });
 
+  test("normalizes scalar canonical ports from naming.ports overrides", () => {
+    const config: GroveConfig = {
+      ...baseConfig,
+      naming: {
+        webPort: 62000,
+        apiPort: 62001,
+        dbPort: 62002,
+        ports: {
+          WEB_PORT: 63000,
+          API_PORT: 63001,
+          DB_PORT: 63002,
+        },
+      },
+    };
+    const result = expandNaming(config, "main");
+    expect(result.webPort).toBe(63000);
+    expect(result.apiPort).toBe(63001);
+    expect(result.dbPort).toBe(63002);
+    expect(result.ports).toMatchObject({
+      WEB_PORT: 63000,
+      API_PORT: 63001,
+      DB_PORT: 63002,
+    });
+  });
+
   test('falls back to "grove" project name when project is missing from config', () => {
     // GroveConfig requires project, but expandNaming reads it with ?? 'grove'
     const config = {
@@ -226,6 +252,24 @@ describe("buildEnvAgent", () => {
     const result = await buildEnvAgent(expanded);
     expect(result).toContain("WEB_PORT=62010");
     expect(result).toContain("API_PORT=62011");
+  });
+
+  test("throws a clear error when two env keys configure the same port", async () => {
+    const expanded: ExpandedNaming = {
+      ...explicitExpanded,
+      dbPort: 64001,
+      webPort: 64001,
+      apiPort: 64002,
+      ports: {
+        WEB_PORT: 64001,
+        API_PORT: 64002,
+        DB_PORT: 64001,
+      },
+    };
+
+    await expect(buildCanonicalEnvVars(expanded)).rejects.toThrow(
+      "WEB_PORT and DB_PORT",
+    );
   });
 });
 

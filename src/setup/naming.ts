@@ -65,6 +65,12 @@ export function expandNaming(
   const dbPort = naming.dbPort ?? "auto";
   const webPort = naming.webPort ?? "auto";
   const apiPort = naming.apiPort ?? "auto";
+  const effectivePorts: Record<string, number | "auto"> = {
+    WEB_PORT: webPort,
+    API_PORT: apiPort,
+    DB_PORT: dbPort,
+    ...(naming.ports ?? {}),
+  };
 
   return {
     composeProject: expandTemplate(
@@ -78,15 +84,11 @@ export function expandNaming(
       naming.dbSchema ?? "${project}_${branch_safe}",
       vars,
     ),
-    dbPort,
-    webPort,
-    apiPort,
-    ports: {
-      WEB_PORT: webPort,
-      API_PORT: apiPort,
-      DB_PORT: dbPort,
-      ...(naming.ports ?? {}),
-    },
+    // Keep scalar fields aligned with the effective canonical map.
+    dbPort: effectivePorts.DB_PORT,
+    webPort: effectivePorts.WEB_PORT,
+    apiPort: effectivePorts.API_PORT,
+    ports: effectivePorts,
   };
 }
 
@@ -206,15 +208,26 @@ export async function buildCanonicalEnvVars(
     ...expanded.ports,
   };
 
-  const reserved = new Set<number>(await getDockerPublishedHostPorts());
+  const dockerReserved = new Set<number>(await getDockerPublishedHostPorts());
+  const reserved = new Set<number>(dockerReserved);
+  const configuredByPort = new Map<number, string>();
   const resolvedPorts: Record<string, number> = {};
 
   for (const [key, value] of Object.entries(portSpecs)) {
     if (typeof value === "number") {
-      if (reserved.has(value)) {
-        throw new Error(`Duplicate port configured: ${value}`);
+      const duplicateKey = configuredByPort.get(value);
+      if (duplicateKey) {
+        throw new Error(
+          `Port ${value} is configured for both ${duplicateKey} and ${key}.`,
+        );
+      }
+      if (dockerReserved.has(value)) {
+        throw new Error(
+          `Port ${value} configured for ${key} is already published by a running container.`,
+        );
       }
       reserved.add(value);
+      configuredByPort.set(value, key);
       resolvedPorts[key] = value;
       continue;
     }

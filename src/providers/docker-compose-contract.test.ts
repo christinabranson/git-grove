@@ -4,6 +4,8 @@ import {
   buildAliasMap,
   discoverComposeContractFromText,
   extractInterpolationVars,
+  formatDoctorEnvReport,
+  preflightComposeEnv,
   renderEnvContent,
 } from "./docker-compose-contract.js";
 
@@ -144,5 +146,73 @@ describe("analyzeResolvedPorts", () => {
     expect(
       issues.some((i) => i.message.includes("default-looking host port 3000")),
     ).toBe(true);
+  });
+});
+
+describe("preflightComposeEnv", () => {
+  test("treats expectedVars as required compose variables", async () => {
+    const result = await preflightComposeEnv(
+      process.cwd(),
+      {
+        expectedVars: ["FEATURE_FLAG"],
+        portRefs: [],
+        dbNameRefs: [],
+        projectNameVars: [],
+        warnings: [],
+      },
+      {},
+    );
+
+    expect(
+      result.issues.some((issue) =>
+        issue.message.includes(
+          "Missing required compose variable: FEATURE_FLAG",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  test("treats empty-string env values as present", async () => {
+    const result = await preflightComposeEnv(
+      process.cwd(),
+      {
+        expectedVars: ["FEATURE_FLAG"],
+        portRefs: [],
+        dbNameRefs: [],
+        projectNameVars: [],
+        warnings: [],
+      },
+      { FEATURE_FLAG: "" },
+    );
+
+    expect(
+      result.issues.some((issue) =>
+        issue.message.includes(
+          "Missing required compose variable: FEATURE_FLAG",
+        ),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("formatDoctorEnvReport", () => {
+  test("does not list empty-string expected vars as missing", () => {
+    const report = formatDoctorEnvReport(
+      {
+        expectedVars: ["FEATURE_FLAG"],
+        portRefs: [],
+        dbNameRefs: [],
+        projectNameVars: [],
+        warnings: [],
+      },
+      { FEATURE_FLAG: "" },
+      {
+        ok: true,
+        issues: [],
+        resolvedPublishedPorts: [],
+      },
+    );
+
+    expect(report).toContain("Missing vars:\n  (none)");
   });
 });

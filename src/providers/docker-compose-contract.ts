@@ -390,7 +390,7 @@ export async function discoverComposeContract(
     ...(modelResult.contract ? [modelResult.contract] : []),
     ...fileContracts,
     {
-      expectedVars: [],
+      expectedVars: varsResult.expectedVars ?? [],
       portRefs: (varsResult.expectedVars ?? [])
         .filter((v) => isPortLikeVar(v))
         .map((variable) => ({ variable, source: "variables" as const })),
@@ -463,18 +463,20 @@ export function buildAliasMap(
   canonicalValues: Record<string, string>,
 ): Record<string, string> {
   const aliases: Record<string, string> = {};
+  const hasCanonical = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(canonicalValues, key);
 
   for (const ref of contract.portRefs) {
-    if (canonicalValues[ref.variable]) continue;
+    if (hasCanonical(ref.variable)) continue;
     const canonical = mapPortVarToCanonical(ref.variable);
-    if (canonicalValues[canonical])
+    if (hasCanonical(canonical))
       aliases[ref.variable] = canonicalValues[canonical];
   }
 
   for (const ref of contract.dbNameRefs) {
-    if (canonicalValues[ref.variable]) continue;
+    if (hasCanonical(ref.variable)) continue;
     const canonical = mapDbVarToCanonical(ref.variable);
-    if (canonicalValues[canonical])
+    if (hasCanonical(canonical))
       aliases[ref.variable] = canonicalValues[canonical];
   }
 
@@ -655,15 +657,18 @@ export async function preflightComposeEnv(
 ): Promise<PreflightResult> {
   const issues: PreflightIssue[] = [];
   const projectName = envVars["COMPOSE_PROJECT_NAME"];
+  const hasEnvVar = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(envVars, key);
 
   const requiredVars = new Set<string>([
+    ...contract.expectedVars,
     ...contract.portRefs.map((r) => r.variable),
     ...contract.dbNameRefs.map((r) => r.variable),
     ...contract.projectNameVars,
   ]);
 
   for (const variable of requiredVars) {
-    if (!envVars[variable]) {
+    if (!hasEnvVar(variable)) {
       issues.push({
         severity: "error",
         message: `Missing required compose variable: ${variable}`,
@@ -693,7 +698,11 @@ export async function preflightComposeEnv(
         message: "Compose preflight skipped because Docker CLI is unavailable",
         details: message,
       });
-      return { ok: true, issues, resolvedPublishedPorts: [] };
+      return {
+        ok: !issues.some((i) => i.severity === "error"),
+        issues,
+        resolvedPublishedPorts: [],
+      };
     }
 
     issues.push({
@@ -764,7 +773,9 @@ export function formatDoctorEnvReport(
   envVars: Record<string, string>,
   preflight: PreflightResult,
 ): string {
-  const missingVars = contract.expectedVars.filter((v) => !envVars[v]);
+  const missingVars = contract.expectedVars.filter(
+    (v) => !Object.prototype.hasOwnProperty.call(envVars, v),
+  );
 
   const lines: string[] = [];
   lines.push("Compose expected vars:");
