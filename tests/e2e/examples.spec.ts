@@ -59,7 +59,7 @@ describe("node-basic example", () => {
       await readGeneratedFile(repo.repoPath, ".grove/config.json"),
     );
     const expected = JSON.parse(
-      await readExpectedFile("node-basic", ".grove/config.json"),
+      await readExpectedFile("node-basic", "grove.config.json"),
     );
 
     expect(generated).toEqual(expected);
@@ -192,7 +192,7 @@ describe("docker-basic example", () => {
       await readGeneratedFile(repo.repoPath, ".grove/config.json"),
     );
     const expected = JSON.parse(
-      await readExpectedFile("docker-basic", ".grove/config.json"),
+      await readExpectedFile("docker-basic", "grove.config.json"),
     );
 
     expect(generated).toEqual(expected);
