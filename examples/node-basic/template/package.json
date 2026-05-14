@@ -1,0 +1,9 @@
+{
+  "name": "node-basic",
+  "version": "1.0.0",
+  "description": "A basic Node.js project",
+  "scripts": {
+    "dev": "node src/index.js",
+    "start": "node src/index.js"
+  }
+}

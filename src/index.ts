@@ -24,6 +24,7 @@ import {
 import { loadGroveConfig } from "./data/groveConfig.js";
 import { expandNaming } from "./setup/naming.js";
 import { runSetup } from "./commands/setup.js";
+import { runDoctor } from "./commands/doctor.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
 import { warnIfHardcodedComposePorts } from "./utils/hardcodedPortsCheck.js";
 import {
@@ -918,6 +919,12 @@ program
   );
 
 const doctor = program.command("doctor").description("Run Grove diagnostics");
+
+doctor
+  .option("--json", "Output diagnostics as JSON")
+  .action(async (opts: { json?: boolean }) => {
+    await runDoctor(process.cwd(), { json: opts.json });
+  });
 
 doctor
   .command("env [branch]")

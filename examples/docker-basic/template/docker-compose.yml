@@ -1,0 +1,8 @@
+services:
+  web:
+    image: node:18-alpine
+    working_dir: /app
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development

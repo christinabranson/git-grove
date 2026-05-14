@@ -26,3 +26,6 @@ jobs:
 
       - name: Run tests
         run: npm run test:run
+
+      - name: Run example e2e tests
+        run: npm run test:e2e
