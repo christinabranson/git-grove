@@ -8,6 +8,7 @@ import type { GroveConfig } from "../types.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
 import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
+import { detectDefaultBranch } from "../data/worktrees.js";
 import { execa } from "execa";
 import { loadGroveConfig } from "../data/groveConfig.js";
 import {
@@ -325,6 +326,19 @@ export async function runSetup(
 
   // 3. Generate config
   const config = preset.generate(detection);
+  try {
+    const defaultBaseBranch = await detectDefaultBranch(repoPath);
+    config.worktrees = {
+      ...(config.worktrees ?? {}),
+      defaultBaseBranch,
+    };
+    debugLog(opts.debug, `detected default base branch: ${defaultBaseBranch}`);
+  } catch {
+    debugLog(
+      opts.debug,
+      `default base branch detection failed; using preset default (${config.worktrees?.defaultBaseBranch ?? "main"})`,
+    );
+  }
 
   await warnIfHardcodedComposePorts(repoPath, [
     config.sharedComposeFile ?? DEFAULT_SHARED_COMPOSE_FILE,
