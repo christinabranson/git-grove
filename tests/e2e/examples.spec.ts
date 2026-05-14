@@ -142,7 +142,9 @@ describe("node-basic example", () => {
       ok: boolean;
       checks: { name: string; ok: boolean }[];
     };
-    const envCheck = result.checks.find((c) => c.name === ".env.worktree exists");
+    const envCheck = result.checks.find(
+      (c) => c.name === ".env.worktree exists",
+    );
     expect(envCheck?.ok).toBe(true);
   });
 });
@@ -260,7 +262,9 @@ describe("docker-basic example", () => {
       ok: boolean;
       checks: { name: string; ok: boolean }[];
     };
-    const envCheck = result.checks.find((c) => c.name === ".env.worktree exists");
+    const envCheck = result.checks.find(
+      (c) => c.name === ".env.worktree exists",
+    );
     expect(envCheck?.ok).toBe(true);
   });
 });
