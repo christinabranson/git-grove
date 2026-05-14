@@ -36,7 +36,9 @@ describe("node-basic example", () => {
 
     const setup = await runGroveSetup(repo.repoPath);
     expect(setup.exitCode).toBe(0);
-    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(
+      true,
+    );
   });
 
   test("generated config has correct project and provider shape", async () => {
@@ -167,7 +169,9 @@ describe("docker-basic example", () => {
 
     const setup = await runGroveSetup(repo.repoPath);
     expect(setup.exitCode).toBe(0);
-    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(
+      true,
+    );
   });
 
   test("generated config selects docker preset with web service", async () => {
