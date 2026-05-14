@@ -24,5 +24,11 @@ jobs:
       - name: Check formatting
         run: npx prettier --check .
 
+      - name: Build
+        run: npm run build
+
       - name: Run tests
         run: npm run test:run
+
+      - name: Run example e2e tests
+        run: npm run test:e2e
