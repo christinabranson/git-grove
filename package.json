@@ -13,7 +13,7 @@
     "test:run": "vitest run",
     "coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "prepare": "husky"
+    "prepare": "node -e \"if (process.env.CI || !require('fs').existsSync('.git')) process.exit(0)\" && husky"
   },
   "dependencies": {
     "chalk": "^5.3.0",
@@ -32,7 +32,7 @@
     "@vitest/coverage-v8": "^2.1.9",
     "husky": "^9.1.7",
     "ink-testing-library": "^3.0.0",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^15.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0",
     "vitest": "^2.1.9"
@@ -42,6 +42,6 @@
     "node": ">=18"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,json,md}": "prettier --write"
+    "*.{ts,tsx,js,json,md,yml,yaml}": "prettier --write"
   }
 }
