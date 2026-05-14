@@ -8,6 +8,7 @@ import {
   loadWorktrees,
   detectRepoRoot,
   resolveWorktreeRoot,
+  detectDefaultBranch,
   createWorktreeWithBase,
 } from "./data/worktrees.js";
 import { printStatus } from "./commands/status.js";
@@ -163,11 +164,11 @@ program
   .description("Create or attach a worktree and start its environment")
   .option(
     "--new",
-    "Create a new branch (use --base to set the starting point, defaults to main)",
+    "Create a new branch (use --base to set the starting point, defaults to the repo default branch)",
   )
   .option(
     "--base <branch>",
-    "Base branch for --new (default: .grove worktrees.defaultBaseBranch or main)",
+    "Base branch for --new (default: repo default branch)",
   )
   .option(
     "--refresh-env",
@@ -227,10 +228,7 @@ program
         if (!existsSync(worktreePath)) {
           if (!opts.json) console.log(`Creating worktree at ${worktreePath}…`);
           if (opts.new) {
-            const base =
-              opts.base ??
-              repoGroveConfig?.worktrees?.defaultBaseBranch ??
-              "main";
+            const base = opts.base ?? (await detectDefaultBranch(repoPath));
             if (!opts.json) console.log(`  branching off ${base}`);
             await createWorktreeWithBase(repoPath, branch, worktreePath, base);
           } else {

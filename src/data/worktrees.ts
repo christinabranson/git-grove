@@ -376,24 +376,44 @@ export async function detectDefaultBranch(repoPath: string): Promise<string> {
       ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
       { cwd: repoPath },
     );
-    const ref = stdout.trim();
-    if (ref) return ref.replace(/^[^/]+\//, "");
+    const remoteRef = stdout.trim(); // e.g. "origin/main"
+    if (remoteRef) {
+      const branch = remoteRef.replace(/^[^/]+\//, "");
+      try {
+        await execa("git", ["rev-parse", "--verify", branch], {
+          cwd: repoPath,
+        });
+        return branch;
+      } catch {
+        return remoteRef; // local branch absent — return full remote ref as valid base
+      }
+    }
   } catch {
     // remote HEAD not configured
   }
 
   for (const candidate of ["main", "master"]) {
-    for (const ref of [candidate, `origin/${candidate}`]) {
-      try {
-        await execa("git", ["rev-parse", "--verify", ref], { cwd: repoPath });
-        return candidate;
-      } catch {
-        // ref doesn't exist, try next
-      }
+    try {
+      await execa("git", ["rev-parse", "--verify", candidate], {
+        cwd: repoPath,
+      });
+      return candidate;
+    } catch {
+      // local branch absent
+    }
+    try {
+      await execa("git", ["rev-parse", "--verify", `origin/${candidate}`], {
+        cwd: repoPath,
+      });
+      return `origin/${candidate}`;
+    } catch {
+      // remote branch absent too
     }
   }
 
-  return "main";
+  throw new Error(
+    "Unable to detect the default branch. Use --base <branch> to specify one.",
+  );
 }
 
 export async function createWorktreeWithBase(

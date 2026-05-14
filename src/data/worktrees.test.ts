@@ -283,28 +283,39 @@ describe("loadWorktrees", () => {
 });
 
 describe("detectDefaultBranch", () => {
-  test("returns branch name from origin/HEAD when configured", async () => {
+  test("returns short branch name from origin/HEAD when local branch exists", async () => {
     mockedExeca.mockResolvedValueOnce({
       stdout: "origin/main\n",
-    } as ReturnType<typeof execa>);
+    } as ReturnType<typeof execa>); // symbolic-ref succeeds
+    mockedExeca.mockResolvedValueOnce({ stdout: "abc123" } as ReturnType<
+      typeof execa
+    >); // local "main" exists
     expect(await detectDefaultBranch("/repo")).toBe("main");
+  });
+
+  test("returns full remote ref from origin/HEAD when local branch is absent", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "origin/main\n",
+    } as ReturnType<typeof execa>); // symbolic-ref succeeds
+    mockedExeca.mockRejectedValueOnce(new Error("no local main")); // local "main" absent
+    expect(await detectDefaultBranch("/repo")).toBe("origin/main");
   });
 
   test("falls back to local main when origin/HEAD not configured", async () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
     mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
       typeof execa
-    >);
+    >); // local "main" exists
     expect(await detectDefaultBranch("/repo")).toBe("main");
   });
 
-  test("falls back to origin/main when local main is absent", async () => {
+  test("falls back to origin/main ref when local main is absent", async () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/HEAD"));
     mockedExeca.mockRejectedValueOnce(new Error("no local main"));
     mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
       typeof execa
-    >);
-    expect(await detectDefaultBranch("/repo")).toBe("main");
+    >); // origin/main exists
+    expect(await detectDefaultBranch("/repo")).toBe("origin/main");
   });
 
   test("falls back to local master when main is absent in both local and remote", async () => {
@@ -313,13 +324,15 @@ describe("detectDefaultBranch", () => {
     mockedExeca.mockRejectedValueOnce(new Error("no origin/main"));
     mockedExeca.mockResolvedValueOnce({ stdout: "" } as ReturnType<
       typeof execa
-    >);
+    >); // local "master" exists
     expect(await detectDefaultBranch("/repo")).toBe("master");
   });
 
-  test("returns main as ultimate fallback when nothing is found", async () => {
+  test("throws when no default branch can be detected", async () => {
     mockedExeca.mockRejectedValue(new Error("not found"));
-    expect(await detectDefaultBranch("/repo")).toBe("main");
+    await expect(detectDefaultBranch("/repo")).rejects.toThrow(
+      "Unable to detect the default branch",
+    );
   });
 });
 
