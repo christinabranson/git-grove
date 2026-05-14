@@ -456,8 +456,10 @@ docker
         console.error("No worktree found");
         process.exit(1);
       }
-      if (!wt.docker) {
-        console.error(`No .env.worktree found in ${wt.path}`);
+      if (!wt.docker || wt.docker.envSource !== "worktree") {
+        console.error(
+          `No .env.worktree found in ${wt.path} — run "grove start" first`,
+        );
         process.exit(1);
       }
 
@@ -531,8 +533,10 @@ docker
         console.error("No worktree found");
         process.exit(1);
       }
-      if (!wt.docker) {
-        console.error(`No .env.worktree found in ${wt.path}`);
+      if (!wt.docker || wt.docker.envSource !== "worktree") {
+        console.error(
+          `No .env.worktree found in ${wt.path} — run "grove start" first`,
+        );
         process.exit(1);
       }
       const { projectName } = wt.docker;
@@ -569,8 +573,10 @@ docker
         console.error("No worktree found");
         process.exit(1);
       }
-      if (!wt.docker) {
-        console.error(`No .env.worktree found in ${wt.path}`);
+      if (!wt.docker || wt.docker.envSource !== "worktree") {
+        console.error(
+          `No .env.worktree found in ${wt.path} — run "grove start" first`,
+        );
         process.exit(1);
       }
       const { projectName } = wt.docker;
@@ -767,6 +773,7 @@ program
         // Bring down docker stack first if running, to avoid orphaned containers
         if (
           wt.docker &&
+          wt.docker.envSource === "worktree" &&
           wt.docker.state !== "not started" &&
           wt.docker.state !== "stopped"
         ) {

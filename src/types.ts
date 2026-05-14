@@ -7,6 +7,7 @@ export interface DockerInfo {
   localstackPort?: number;
   redisDb?: string;
   dbSchema?: string;
+  envSource: "worktree" | "example";
 }
 
 export interface GitChange {

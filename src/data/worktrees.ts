@@ -135,12 +135,14 @@ async function readBaseBranch(
 async function readDockerInfo(worktreePath: string) {
   const envPath = path.join(worktreePath, ".env.worktree");
   const examplePath = path.join(worktreePath, ".env.example");
-  const resolvedEnvPath = existsSync(envPath)
+  const hasWorktreeEnv = existsSync(envPath);
+  const resolvedEnvPath = hasWorktreeEnv
     ? envPath
     : existsSync(examplePath)
       ? examplePath
       : null;
   if (!resolvedEnvPath) return null;
+  const envSource = hasWorktreeEnv ? ("worktree" as const) : ("example" as const);
 
   const hasCompose =
     existsSync(path.join(worktreePath, "docker-compose.yml")) ||
@@ -204,6 +206,7 @@ async function readDockerInfo(worktreePath: string) {
       localstackPort,
       redisDb: env["REDIS_DB"],
       dbSchema: env["DB_SCHEMA"],
+      envSource,
     };
   } catch {
     return {
@@ -213,6 +216,7 @@ async function readDockerInfo(worktreePath: string) {
       localstackPort,
       redisDb: env["REDIS_DB"],
       dbSchema: env["DB_SCHEMA"],
+      envSource,
     };
   }
 }

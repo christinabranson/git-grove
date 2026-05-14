@@ -11,7 +11,7 @@ vi.mock("fs/promises", () => ({
 
 import { execa } from "execa";
 import { existsSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
+import { readFile, mkdir, writeFile } from "fs/promises";
 import {
   resolveWorktreeRoot,
   detectRepoRoot,
@@ -22,6 +22,7 @@ import {
 
 const mockedExeca = execa as MockedFunction<typeof execa>;
 const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
+const mockedReadFile = readFile as MockedFunction<typeof readFile>;
 const mockedMkdir = mkdir as MockedFunction<typeof mkdir>;
 const mockedWriteFile = writeFile as MockedFunction<typeof writeFile>;
 
@@ -159,6 +160,23 @@ describe("loadWorktrees", () => {
   test("sets docker=null when no .env.worktree exists", async () => {
     const { worktrees } = await loadWorktrees("/repo");
     expect(worktrees[0].docker).toBeNull();
+  });
+
+  test("populates docker from .env.example when .env.worktree is absent", async () => {
+    mockedExistsSync.mockImplementation((p: unknown) => {
+      const s = String(p);
+      return s.endsWith(".env.example") || s.endsWith("docker-compose.yml");
+    });
+    mockedReadFile.mockResolvedValue(
+      "COMPOSE_PROJECT_NAME=myapp\nWEB_PORT=3000\n",
+    );
+
+    const { worktrees } = await loadWorktrees("/repo");
+    const wt = worktrees[0];
+    expect(wt.docker).not.toBeNull();
+    expect(wt.docker?.envSource).toBe("example");
+    expect(wt.docker?.projectName).toBe("myapp");
+    expect(wt.docker?.webPort).toBe(3000);
   });
 
   test("sets baseBranch=null when no upstream is configured", async () => {
