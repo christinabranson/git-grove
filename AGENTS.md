@@ -122,6 +122,7 @@ npx prettier --write .
 
 - All new logic should include tests where reasonable
 - Tests should be deterministic and not depend on:
+
   - network access
   - global git config
 

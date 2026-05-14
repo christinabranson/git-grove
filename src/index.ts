@@ -126,8 +126,9 @@ program
     "Open worktree in editor (respects grove config, $VISUAL, $EDITOR)",
   )
   .action(async (branch?: string) => {
-    const { openInEditor, editorDisplayName, resolveEditor } =
-      await import("./tui/editor.js");
+    const { openInEditor, editorDisplayName, resolveEditor } = await import(
+      "./tui/editor.js"
+    );
     try {
       const repoPath = await detectRepoRoot();
       const [{ worktrees }, groveConfig] = await Promise.all([
@@ -166,7 +167,10 @@ program
     "--new",
     "Create a new branch (use --base to set the starting point, defaults to the repo default branch)",
   )
-  .option("--base <branch>", "Base branch for --new (default: repo default branch)")
+  .option(
+    "--base <branch>",
+    "Base branch for --new (default: repo default branch)",
+  )
   .option(
     "--refresh-env",
     "Regenerate .env.worktree from grove config before starting",
