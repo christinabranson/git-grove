@@ -283,6 +283,16 @@ describe("loadWorktrees", () => {
 });
 
 describe("detectDefaultBranch", () => {
+  test("returns develop when origin/HEAD points at origin/develop", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "origin/develop\n",
+    } as ReturnType<typeof execa>); // symbolic-ref succeeds
+    mockedExeca.mockResolvedValueOnce({ stdout: "abc123" } as ReturnType<
+      typeof execa
+    >); // local "develop" exists
+    expect(await detectDefaultBranch("/repo")).toBe("develop");
+  });
+
   test("returns short branch name from origin/HEAD when local branch exists", async () => {
     mockedExeca.mockResolvedValueOnce({
       stdout: "origin/main\n",
