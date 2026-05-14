@@ -1,5 +1,6 @@
 import { describe, test, expect, afterEach, beforeAll } from "vitest";
 import { existsSync } from "fs";
+import path from "path";
 import {
   CLI_BIN,
   createTempExampleRepo,
@@ -35,7 +36,7 @@ describe("node-basic example", () => {
 
     const setup = await runGroveSetup(repo.repoPath);
     expect(setup.exitCode).toBe(0);
-    expect(existsSync(`${repo.repoPath}/.grove/config.json`)).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(true);
   });
 
   test("generated config has correct project and provider shape", async () => {
@@ -112,7 +113,7 @@ describe("node-basic example", () => {
     repo = await createTempExampleRepo("node-basic");
     await runGroveSetup(repo.repoPath, ["--refresh-env"]);
 
-    expect(existsSync(`${repo.repoPath}/.env.worktree`)).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".env.worktree"))).toBe(true);
   });
 
   test(".env.worktree contains stable variables for node-basic on main", async () => {
@@ -166,7 +167,7 @@ describe("docker-basic example", () => {
 
     const setup = await runGroveSetup(repo.repoPath);
     expect(setup.exitCode).toBe(0);
-    expect(existsSync(`${repo.repoPath}/.grove/config.json`)).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".grove", "config.json"))).toBe(true);
   });
 
   test("generated config selects docker preset with web service", async () => {
@@ -232,7 +233,7 @@ describe("docker-basic example", () => {
     repo = await createTempExampleRepo("docker-basic");
     await runGroveSetup(repo.repoPath, ["--refresh-env"]);
 
-    expect(existsSync(`${repo.repoPath}/.env.worktree`)).toBe(true);
+    expect(existsSync(path.join(repo.repoPath, ".env.worktree"))).toBe(true);
   });
 
   test(".env.worktree contains stable variables for docker-basic on main", async () => {

@@ -54,33 +54,13 @@ export async function createTempExampleRepo(
   };
 }
 
-export async function runGroveSetup(
+async function runGroveCli(
   repoPath: string,
+  command: string,
   extraArgs: string[] = [],
 ): Promise<CliResult> {
   try {
-    const result = await execa(
-      "node",
-      [CLI_BIN, "setup", "--yes", ...extraArgs],
-      { cwd: repoPath },
-    );
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err: unknown) {
-    const e = err as { stdout?: string; stderr?: string; exitCode?: number };
-    return {
-      stdout: e.stdout ?? "",
-      stderr: e.stderr ?? "",
-      exitCode: e.exitCode ?? 1,
-    };
-  }
-}
-
-export async function runGroveDoctor(
-  repoPath: string,
-  extraArgs: string[] = [],
-): Promise<CliResult> {
-  try {
-    const result = await execa("node", [CLI_BIN, "doctor", ...extraArgs], {
+    const result = await execa("node", [CLI_BIN, command, ...extraArgs], {
       cwd: repoPath,
     });
     return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
@@ -92,6 +72,20 @@ export async function runGroveDoctor(
       exitCode: e.exitCode ?? 1,
     };
   }
+}
+
+export function runGroveSetup(
+  repoPath: string,
+  extraArgs: string[] = [],
+): Promise<CliResult> {
+  return runGroveCli(repoPath, "setup", ["--yes", ...extraArgs]);
+}
+
+export function runGroveDoctor(
+  repoPath: string,
+  extraArgs: string[] = [],
+): Promise<CliResult> {
+  return runGroveCli(repoPath, "doctor", extraArgs);
 }
 
 export async function readGeneratedFile(

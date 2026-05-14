@@ -918,12 +918,21 @@ program
     },
   );
 
+// `grove doctor`     — runs health checks (action below)
+// `grove doctor env` — inspects compose env contract (subcommand below)
+// --json is scoped to the parent; it is not visible to `doctor env`.
 const doctor = program.command("doctor").description("Run Grove diagnostics");
 
 doctor
   .option("--json", "Output diagnostics as JSON")
   .action(async (opts: { json?: boolean }) => {
-    await runDoctor(process.cwd(), { json: opts.json });
+    try {
+      const result = await runDoctor(process.cwd(), { json: opts.json });
+      if (!result.ok) process.exit(1);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
   });
 
 doctor

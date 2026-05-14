@@ -6,3 +6,5 @@ services:
       - "${WEB_PORT:-3000}:3000"
     environment:
       - NODE_ENV=development
+    command: >
+      node -e "require('http').createServer((_,r)=>r.end('docker-basic\n')).listen(3000,()=>console.log('listening on 3000'))"

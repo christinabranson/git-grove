@@ -56,6 +56,9 @@ function checkGroveConfig(repoRoot: string): DoctorCheck {
   };
 }
 
+// .env.worktree lives in the current worktree directory (which may be the repo
+// root when running from the main checkout). It is optional — the check is
+// informational when missing rather than a hard failure.
 function checkEnvWorktree(repoRoot: string): DoctorCheck {
   const ok = existsSync(path.join(repoRoot, ".env.worktree"));
   return {
@@ -68,6 +71,7 @@ function checkEnvWorktree(repoRoot: string): DoctorCheck {
   };
 }
 
+// Only detects catastrophic git failure — not stale/prunable entries.
 async function checkWorktreeState(repoRoot: string): Promise<DoctorCheck> {
   try {
     await execa("git", ["worktree", "list"], { cwd: repoRoot });
@@ -76,7 +80,8 @@ async function checkWorktreeState(repoRoot: string): Promise<DoctorCheck> {
     return {
       name: "Git worktree state is valid",
       ok: false,
-      message: "git worktree list failed — run `git worktree prune` to repair",
+      message:
+        "git worktree list failed — the repository may be in an inconsistent state",
     };
   }
 }
@@ -124,7 +129,7 @@ export function formatDoctorReport(result: DoctorResult): string {
 export async function runDoctor(
   cwd: string,
   opts: { json?: boolean } = {},
-): Promise<void> {
+): Promise<DoctorResult> {
   const result = await runDoctorChecks(cwd);
 
   if (opts.json) {
@@ -132,7 +137,12 @@ export async function runDoctor(
       JSON.stringify(
         {
           ok: result.ok,
-          checks: result.checks.map(({ name, ok }) => ({ name, ok })),
+          checks: result.checks.map(({ name, ok, optional, message }) => ({
+            name,
+            ok,
+            ...(optional !== undefined ? { optional } : {}),
+            ...(message !== undefined ? { message } : {}),
+          })),
         },
         null,
         2,
@@ -142,7 +152,5 @@ export async function runDoctor(
     console.log("\n" + formatDoctorReport(result) + "\n");
   }
 
-  if (!result.ok) {
-    process.exit(1);
-  }
+  return result;
 }
