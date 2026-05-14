@@ -126,9 +126,8 @@ program
     "Open worktree in editor (respects grove config, $VISUAL, $EDITOR)",
   )
   .action(async (branch?: string) => {
-    const { openInEditor, editorDisplayName, resolveEditor } = await import(
-      "./tui/editor.js"
-    );
+    const { openInEditor, editorDisplayName, resolveEditor } =
+      await import("./tui/editor.js");
     try {
       const repoPath = await detectRepoRoot();
       const [{ worktrees }, groveConfig] = await Promise.all([

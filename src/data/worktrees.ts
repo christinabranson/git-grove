@@ -380,7 +380,9 @@ export async function detectDefaultBranch(repoPath: string): Promise<string> {
     if (remoteRef) {
       const branch = remoteRef.replace(/^[^/]+\//, "");
       try {
-        await execa("git", ["rev-parse", "--verify", branch], { cwd: repoPath });
+        await execa("git", ["rev-parse", "--verify", branch], {
+          cwd: repoPath,
+        });
         return branch;
       } catch {
         return remoteRef; // local branch absent — return full remote ref as valid base
@@ -392,13 +394,17 @@ export async function detectDefaultBranch(repoPath: string): Promise<string> {
 
   for (const candidate of ["main", "master"]) {
     try {
-      await execa("git", ["rev-parse", "--verify", candidate], { cwd: repoPath });
+      await execa("git", ["rev-parse", "--verify", candidate], {
+        cwd: repoPath,
+      });
       return candidate;
     } catch {
       // local branch absent
     }
     try {
-      await execa("git", ["rev-parse", "--verify", `origin/${candidate}`], { cwd: repoPath });
+      await execa("git", ["rev-parse", "--verify", `origin/${candidate}`], {
+        cwd: repoPath,
+      });
       return `origin/${candidate}`;
     } catch {
       // remote branch absent too
