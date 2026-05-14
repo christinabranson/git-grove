@@ -41,12 +41,18 @@ export const presets: Record<PresetName, Preset> = {
         providers,
         ...(Object.keys(shared).length > 0 ? { shared } : {}),
         naming: {
-          composeProject: "grove-${branch_safe}",
+          composeProject: "${project}-${branch_safe}",
           dbSchema: "${project}_${branch_safe}",
+          ports: {
+            WEB_PORT: "auto",
+            API_PORT: "auto",
+            DB_PORT: "auto",
+          },
+          dbPort: "auto",
           webPort: "auto",
           apiPort: "auto",
         },
-        worktrees: { prefix: "grove" },
+        worktrees: { prefix: "grove", defaultBaseBranch: "main" },
       };
     },
   },
@@ -65,7 +71,7 @@ export const presets: Record<PresetName, Preset> = {
         naming: {
           webPort: "auto",
         },
-        worktrees: { prefix: "grove" },
+        worktrees: { prefix: "grove", defaultBaseBranch: "main" },
       };
     },
   },
@@ -83,7 +89,7 @@ export const presets: Record<PresetName, Preset> = {
         naming: {
           webPort: "auto",
         },
-        worktrees: { prefix: "grove" },
+        worktrees: { prefix: "grove", defaultBaseBranch: "main" },
       };
     },
   },

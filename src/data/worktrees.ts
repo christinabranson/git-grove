@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import { readFile } from "fs/promises";
+import { readFile, mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import type { Worktree, ChangeFootprint, GitChange, PRInfo } from "../types.js";
@@ -313,6 +313,13 @@ export async function loadWorktrees(
     fetchPRsByBranch(repoPath),
   ]);
 
+  let cwd = "";
+  try {
+    cwd = process.cwd();
+  } catch {
+    // cwd deleted/moved — no worktree will match, isCurrent stays false
+  }
+
   const worktrees = await Promise.all(
     raw.map(async (wt, idx) => {
       const branch = wt.branch || "(unknown)";
@@ -327,7 +334,7 @@ export async function loadWorktrees(
         branch,
         baseBranch,
         isMain: idx === 0,
-        isCurrent: false,
+        isCurrent: cwd === wt.path || cwd.startsWith(wt.path + path.sep),
         head: wt.head || "",
         docker,
         changeFootprint,
@@ -366,4 +373,68 @@ export async function detectRepoRoot(): Promise<string> {
   } catch {
     throw new Error("Not inside a git repository");
   }
+}
+
+export async function detectDefaultBranch(repoPath: string): Promise<string> {
+  try {
+    const { stdout } = await execa(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
+      { cwd: repoPath },
+    );
+    const remoteRef = stdout.trim(); // e.g. "origin/main"
+    if (remoteRef) {
+      const branch = remoteRef.replace(/^[^/]+\//, "");
+      try {
+        await execa("git", ["rev-parse", "--verify", branch], {
+          cwd: repoPath,
+        });
+        return branch;
+      } catch {
+        return remoteRef; // local branch absent — return full remote ref as valid base
+      }
+    }
+  } catch {
+    // remote HEAD not configured
+  }
+
+  for (const candidate of ["main", "master"]) {
+    try {
+      await execa("git", ["rev-parse", "--verify", candidate], {
+        cwd: repoPath,
+      });
+      return candidate;
+    } catch {
+      // local branch absent
+    }
+    try {
+      await execa("git", ["rev-parse", "--verify", `origin/${candidate}`], {
+        cwd: repoPath,
+      });
+      return `origin/${candidate}`;
+    } catch {
+      // remote branch absent too
+    }
+  }
+
+  throw new Error(
+    "Unable to detect the default branch. Use --base <branch> to specify one.",
+  );
+}
+
+export async function createWorktreeWithBase(
+  repoPath: string,
+  branch: string,
+  worktreePath: string,
+  base: string,
+): Promise<void> {
+  await execa("git", ["worktree", "add", "-b", branch, worktreePath, base], {
+    cwd: repoPath,
+  });
+  const groveMetaDir = path.join(worktreePath, ".grove");
+  await mkdir(groveMetaDir, { recursive: true });
+  await writeFile(
+    path.join(groveMetaDir, "meta.json"),
+    JSON.stringify({ baseBranch: base }, null, 2),
+  );
 }

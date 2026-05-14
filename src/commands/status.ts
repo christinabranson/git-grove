@@ -69,13 +69,17 @@ export function printStatus(worktrees: Worktree[]): void {
   });
 
   for (const wt of worktrees) {
+    const shortPath = wt.path.replace(process.env.HOME ?? "", "~");
     const branchLabel =
       (wt.isMain
         ? chalk.blue(wt.branch) + chalk.gray(" (main)")
         : chalk.white(wt.branch)) +
+      (wt.isCurrent ? chalk.cyan(" ◀ current") : "") +
       (wt.baseBranch && !wt.isMain
         ? "\n" + chalk.gray(`  off ${wt.baseBranch}`)
-        : "");
+        : "") +
+      "\n" +
+      chalk.gray(`  ${shortPath}`);
 
     table.push([branchLabel, dockerCell(wt), prCell(wt), changesCell(wt)]);
   }
