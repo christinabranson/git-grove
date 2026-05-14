@@ -142,7 +142,9 @@ async function readDockerInfo(worktreePath: string) {
       ? examplePath
       : null;
   if (!resolvedEnvPath) return null;
-  const envSource = hasWorktreeEnv ? ("worktree" as const) : ("example" as const);
+  const envSource = hasWorktreeEnv
+    ? ("worktree" as const)
+    : ("example" as const);
 
   const hasCompose =
     existsSync(path.join(worktreePath, "docker-compose.yml")) ||
