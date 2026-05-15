@@ -7,6 +7,7 @@ import {
   formatDoctorEnvReport,
   preflightComposeEnv,
   resolveContractEnvVars,
+  selectCanonicalEnvForOutput,
   renderEnvContent,
 } from "./docker-compose-contract.js";
 
@@ -255,6 +256,91 @@ describe("renderEnvContent", () => {
     expect(lines).toContain("APP_PORT=8080");
     expect(lines).toContain("POSTGRES_PORT=15432");
     expect(lines).toContain("POSTGRES_DB=myapp_foo");
+  });
+});
+
+describe("selectCanonicalEnvForOutput", () => {
+  test("drops DB_SCHEMA when compose/env contract do not require it", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    ports:
+      - "\${WEB_PORT}:3000"
+`);
+
+    const selected = selectCanonicalEnvForOutput(contract, {
+      COMPOSE_PROJECT_NAME: "grove-foo",
+      WEB_PORT: "8080",
+      API_PORT: "8081",
+      DB_PORT: "15432",
+      DB_SCHEMA: "myapp_foo",
+    });
+
+    expect(selected["DB_SCHEMA"]).toBeUndefined();
+    expect(selected["DB_PORT"]).toBe("15432");
+  });
+
+  test("keeps DB_SCHEMA when compose contract expects it", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    environment:
+      DB_SCHEMA: \${DB_SCHEMA}
+`);
+
+    const selected = selectCanonicalEnvForOutput(contract, {
+      COMPOSE_PROJECT_NAME: "grove-foo",
+      WEB_PORT: "8080",
+      API_PORT: "8081",
+      DB_PORT: "15432",
+      DB_SCHEMA: "myapp_foo",
+    });
+
+    expect(selected["DB_SCHEMA"]).toBe("myapp_foo");
+  });
+
+  test("keeps DB_SCHEMA when env contract explicitly requires it", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    ports:
+      - "\${WEB_PORT}:3000"
+`);
+
+    const selected = selectCanonicalEnvForOutput(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-foo",
+        WEB_PORT: "8080",
+        API_PORT: "8081",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_foo",
+      },
+      {
+        required: ["DB_SCHEMA"],
+      },
+    );
+
+    expect(selected["DB_SCHEMA"]).toBe("myapp_foo");
+  });
+
+  test("keeps canonical keys that do not have special output policies", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    ports:
+      - "\${WEB_PORT}:3000"
+`);
+
+    const selected = selectCanonicalEnvForOutput(contract, {
+      COMPOSE_PROJECT_NAME: "grove-foo",
+      WEB_PORT: "8080",
+      API_PORT: "8081",
+      DB_PORT: "15432",
+      SHARED_PROJECT_NAME: "grove-shared",
+    });
+
+    expect(selected["SHARED_PROJECT_NAME"]).toBe("grove-shared");
   });
 });
 

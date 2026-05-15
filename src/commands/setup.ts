@@ -16,6 +16,7 @@ import {
   readEnvFile,
   readSourceEnvFiles,
   resolveContractEnvVars,
+  selectCanonicalEnvForOutput,
   renderEnvContent,
 } from "../providers/docker-compose-contract.js";
 
@@ -180,6 +181,11 @@ async function regenerateEnvFromConfig(
     sourceEnv,
     config.envContract,
   );
+  const renderedCanonicalEnv = selectCanonicalEnvForOutput(
+    contract,
+    canonicalEnv,
+    config.envContract,
+  );
   const envErrors = contractEnv.issues.filter((i) => i.severity === "error");
   if (envErrors.length > 0) {
     throw new Error(
@@ -193,7 +199,7 @@ async function regenerateEnvFromConfig(
       ].join("\n"),
     );
   }
-  const envContent = renderEnvContent(canonicalEnv, contractEnv.values);
+  const envContent = renderEnvContent(renderedCanonicalEnv, contractEnv.values);
   debugLog(
     debug,
     `contract expected vars: ${contract.expectedVars.length > 0 ? contract.expectedVars.join(", ") : "(none)"}`,
@@ -208,7 +214,7 @@ async function regenerateEnvFromConfig(
   );
   debugLog(
     debug,
-    `canonical env vars: ${Object.keys(canonicalEnv)
+    `canonical env vars: ${Object.keys(renderedCanonicalEnv)
       .sort((a, b) => a.localeCompare(b))
       .join(", ")}`,
   );
