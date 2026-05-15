@@ -2,6 +2,7 @@ import type { GroveProvider } from "./types.js";
 import type { GroveEnvironment, GroveConfig } from "../types.js";
 import { DockerComposeProvider } from "./docker-compose.js";
 import { NodeScriptsProvider } from "./node-scripts.js";
+import { CustomShellProvider } from "./custom-shell.js";
 import { loadGroveConfig } from "../data/groveConfig.js";
 import { detectProject } from "../setup/detect.js";
 
@@ -100,6 +101,19 @@ function resolveFromConfig(
         worktreePath,
         envName,
         providerConfig.command ?? "dev",
+      );
+    case "custom-shell":
+      if (!providerConfig.script) {
+        throw new Error(
+          `custom-shell provider requires a "script" field in .grove/config.json`,
+        );
+      }
+      return new CustomShellProvider(
+        worktreePath,
+        envName,
+        providerConfig.script,
+        providerConfig.stopScript,
+        providerConfig.service,
       );
     default:
       return new FallbackProvider(worktreePath, envName);

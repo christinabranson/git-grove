@@ -54,6 +54,7 @@ export default defineConfig({
         items: [
           { text: "Node Project", link: "/examples/node-script" },
           { text: "Docker Compose", link: "/examples/docker" },
+          { text: "Docker + Custom Script", link: "/examples/docker-script" },
           { text: "Kubernetes Dev", link: "/examples/kubernetes" },
         ],
       },

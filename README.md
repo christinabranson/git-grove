@@ -29,6 +29,28 @@ grove        # open TUI in any repo with worktrees
 
 ---
 
+## The core idea
+
+Grove's job is simple: for each branch, it writes a `.env.worktree` file with unique values — a different port, a different Docker project name, a different database schema. Your `docker-compose.yml` reads these variables. Each branch gets a completely isolated stack. No manual port tracking, no coordination between terminals.
+
+```bash
+# .env.worktree generated for feat/login
+COMPOSE_PROJECT_NAME=my-app-feat-login
+WEB_PORT=8081
+DB_PORT=5433
+DB_SCHEMA=my_app_feat_login
+
+# .env.worktree generated for feat/payments (running in parallel)
+COMPOSE_PROJECT_NAME=my-app-feat-payments
+WEB_PORT=8083
+DB_PORT=5435
+DB_SCHEMA=my_app_feat_payments
+```
+
+Normally Grove hands these files straight to `docker compose --env-file`. If your startup needs more — waiting for a DB healthcheck, running migrations, seeding fixture data on first boot — a [custom startup script](https://christinabranson.github.io/git-grove/guides/docker#custom-startup-scripts) lets you take over while still receiving all the generated env vars.
+
+---
+
 ## Why Grove?
 
 Git worktrees are powerful — you can have multiple branches checked out simultaneously, each in its own directory. But the experience is rough. You manage paths manually, ports collide between stacks, and there's no way to see what's running where.

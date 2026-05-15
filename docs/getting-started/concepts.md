@@ -29,9 +29,10 @@ A **provider** is how Grove starts and stops a worktree's development environmen
 | ---------------- | --------------------------------------------------------------------- |
 | `docker-compose` | `docker-compose.yml` or `compose.yaml` exists + `.env.worktree` found |
 | `node-scripts`   | `package.json` has a `dev` or `start` script                          |
+| `custom-shell`   | Configured explicitly in `.grove/config.json`                         |
 | `unknown`        | No recognized project type — Grove takes no destructive action        |
 
-You can also configure providers explicitly in `.grove/config.json` to skip auto-detection.
+You can also configure providers explicitly in `.grove/config.json` to skip auto-detection. The `custom-shell` provider is always explicit — it never auto-detects — and lets you run any shell script as the startup sequence (see [Custom startup scripts](/guides/docker#custom-startup-scripts)).
 
 ## `.env.worktree`
 
