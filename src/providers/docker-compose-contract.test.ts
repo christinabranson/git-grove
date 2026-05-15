@@ -324,6 +324,31 @@ services:
     expect(selected["DB_SCHEMA"]).toBe("myapp_foo");
   });
 
+  test("keeps DB_SCHEMA when env contract lists it as derived", () => {
+    const contract = discoverComposeContractFromText(`
+services:
+  app:
+    ports:
+      - "\${WEB_PORT}:3000"
+`);
+
+    const selected = selectCanonicalEnvForOutput(
+      contract,
+      {
+        COMPOSE_PROJECT_NAME: "grove-foo",
+        WEB_PORT: "8080",
+        API_PORT: "8081",
+        DB_PORT: "15432",
+        DB_SCHEMA: "myapp_foo",
+      },
+      {
+        derived: { DB_SCHEMA: "${COMPOSE_PROJECT_NAME}" },
+      },
+    );
+
+    expect(selected["DB_SCHEMA"]).toBe("myapp_foo");
+  });
+
   test("keeps canonical keys that do not have special output policies", () => {
     const contract = discoverComposeContractFromText(`
 services:

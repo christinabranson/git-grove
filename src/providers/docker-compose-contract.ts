@@ -650,7 +650,9 @@ function hasExplicitCanonicalPolicy(
   envContract?: GroveEnvContract,
 ): boolean {
   return Boolean(
-    envContract?.required?.includes(key) || envContract?.managed?.includes(key),
+    envContract?.required?.includes(key) ||
+    envContract?.managed?.includes(key) ||
+    (envContract?.derived !== undefined && key in envContract.derived),
   );
 }
 
