@@ -14,7 +14,213 @@
 
 > _See the forest. Manage the trees._
 
-Grove is a terminal-based mission control for parallel agentic workflows. It wraps git worktrees, dev environment lifecycle, and AI agent sessions into a single keyboard-driven interface — without replacing any of your existing tooling.
+**Mission control for parallel git worktrees.**
+
+Grove wraps git worktrees in a keyboard-driven terminal interface — giving each branch its own isolated environment, Docker stack, and port assignments. Run multiple AI agents, review PRs, and juggle features in parallel without switching branches or fighting port conflicts.
+
+```bash
+git clone https://github.com/christinabranson/git-grove.git
+cd git-grove && npm install && npm run build && npm link
+
+grove        # open TUI in any repo with worktrees
+```
+
+<!-- TODO: add terminal demo gif -->
+
+---
+
+## Why Grove?
+
+Git worktrees are powerful — you can have multiple branches checked out simultaneously, each in its own directory. But the experience is rough. You manage paths manually, ports collide between stacks, and there's no way to see what's running where.
+
+Modern development workflows make this worse:
+
+- **AI coding agents** need isolated environments so they don't interfere with each other
+- **Parallel feature work** means wanting to context-switch without tearing down a running stack
+- **Docker Compose projects** need unique project names and port bindings per environment
+- **PR review** is faster when you can spin up the exact branch without disrupting your current work
+
+Grove solves this with a layer on top of standard git and Docker primitives:
+
+- Automatic environment setup (Docker Compose or Node dev servers)
+- Unique port and project name allocation per branch — no coordination required
+- A TUI that shows all worktrees, their environments, and agent status at a glance
+- A CLI that AI agents and scripts can query for environment discovery
+
+---
+
+## Features
+
+- **Interactive TUI** — keyboard-driven dashboard showing worktree list, agent status, Docker state, and change footprint
+- **Automatic port allocation** — each worktree gets unique ports; no manual coordination
+- **Docker Compose integration** — per-worktree stacks with shared infrastructure support (db, redis, etc.)
+- **Node dev server support** — auto-detects Vite, Next.js, and generic `npm run dev` projects
+- **PR checkout** — `grove start 1234` resolves the branch from a PR number via `gh`
+- **Agent manifest** — AI agents write `.worktree-manifest.json`; Grove displays their status live in the TUI
+- **Editor integration** — `grove open` launches your editor; auto-detects VS Code, Cursor, Windsurf, vim, and more
+- **Environment templating** — naming templates for Compose project names, DB schemas, and port variables
+- **Env contract resolution** — passthrough, derived, and required vars for safe `.env.worktree` generation
+- **Doctor command** — diagnose port mismatches and env contract issues before they break your stack
+- **Zero-config start** — `grove` works in any repo with worktrees; no setup required to get started
+
+---
+
+## Quick Start
+
+**1. Install**
+
+Node 18+ required. Grove is installed from source:
+
+```bash
+git clone https://github.com/christinabranson/git-grove.git
+cd git-grove && npm install && npm run build && npm link
+```
+
+Verify:
+
+```bash
+grove --version
+```
+
+**2. Open the TUI in any repo**
+
+```bash
+cd your-project
+grove
+```
+
+Grove reads `git worktree list` and displays them. Nothing to configure.
+
+**3. Initialize a repo for environment management**
+
+```bash
+grove setup
+```
+
+Grove detects your project type (Docker Compose, Vite, Node) and writes `.grove/config.json`. This is optional — skip it if you only need worktree visibility.
+
+**4. Create a worktree**
+
+```bash
+# Check out an existing remote branch
+grove start feat/my-feature
+
+# Create a new branch off main
+grove start feat/my-feature --new
+
+# Check out a PR by number (requires gh)
+grove start 1234
+```
+
+**5. Manage the environment**
+
+```bash
+grove open feat/my-feature    # open in your editor
+grove status                  # show all worktrees with status
+grove stop feat/my-feature    # stop the environment
+grove delete feat/my-feature  # remove the worktree
+```
+
+---
+
+## Example Workflows
+
+### AI-assisted development
+
+Run multiple AI agents in parallel — each on its own branch with its own stack:
+
+```bash
+# Start two isolated environments
+grove start feat/auth-refresh --new
+grove start fix/helm-chart --new
+
+# Each worktree gets unique ports — stacks don't conflict
+grove status
+
+# Launch agents in each worktree (Claude Code, Codex, etc.)
+# Agents read AGENTS.md for environment discovery instructions
+
+# Watch status from the TUI — agents report back via .worktree-manifest.json
+grove
+```
+
+Add an `AGENTS.md` to your repo telling AI agents how to discover their environment and report status back to Grove. Agents write `.worktree-manifest.json` with their current status; Grove displays it live in the TUI on sync (`s`).
+
+### Reviewing a PR
+
+```bash
+# Resolve branch from PR number, create isolated worktree and environment
+grove start 847
+
+# Spin up its stack
+grove docker up feat/review-branch
+
+# Open in your editor
+grove open feat/review-branch
+
+# Tear down when done
+grove delete feat/review-branch
+```
+
+### Dockerized development
+
+```bash
+# One-time repo setup — detects Docker Compose automatically
+grove setup
+
+# Start shared infrastructure (db, redis) — runs once across all worktrees
+grove shared up
+
+# Start a per-branch stack with unique ports
+grove start feat/my-feature
+
+# Inspect env contract vs generated vars if something seems off
+grove doctor env feat/my-feature
+
+# Tear down a branch stack and its volumes
+grove docker teardown feat/my-feature
+```
+
+### Parallel feature development
+
+```bash
+# Two features, two isolated stacks, no coordination needed
+grove start feat/payments --new
+grove start feat/notifications --new
+
+# Each gets unique ports — no collision
+grove status
+
+# Switch context by opening the other worktree in your editor
+grove open feat/payments
+grove open feat/notifications
+```
+
+### Monorepo workflows
+
+For projects with multiple services, configure `.grove/config.json` with per-service providers and naming templates:
+
+```json
+{
+  "project": "my-monorepo",
+  "providers": {
+    "web": { "type": "docker-compose", "service": "web" },
+    "api": { "type": "docker-compose", "service": "api" }
+  },
+  "naming": {
+    "composeProject": "${project}-${branch_safe}",
+    "ports": { "WEB_PORT": "auto", "API_PORT": "auto" }
+  }
+}
+```
+
+`${branch_safe}` expands to the branch name lowercased with `/` replaced by `-`, keeping Compose project names valid and unique per worktree.
+
+---
+
+## TUI Reference
+
+Run `grove` with no arguments to open the interactive interface:
 
 ```
 ┌─ worktrees ──────────┐┌─ agent / docker ───────────────────────┐
@@ -32,852 +238,99 @@ Grove is a terminal-based mission control for parallel agentic workflows. It wra
 [ l ] launch agent  [ o ] open  [ u ] docker up  [ d ] down  [ s ] sync  [ ? ] help
 ```
 
----
-
-## Installation
-
-Grove is a global npm package. It requires Node 18+ — check with `node --version` if you're managing Node via `nvm` or similar.
-
-```bash
-git clone https://github.com/your-org/grove-wt.git
-cd grove-wt
-npm install
-npm run build
-npm link          # makes `grove` available globally
-```
-
-Once linked, confirm it worked:
-
-```bash
-grove --version
-```
-
-**Dependencies** — Grove requires these tools already in your PATH before first use:
-
-| Tool     | Required for                                     |
-| -------- | ------------------------------------------------ |
-| `git`    | All worktree operations                          |
-| `gh`     | PR resolution (`grove start <PR#>`), GitHub sync |
-| `docker` | Docker Compose environment management            |
-
-If any of these are missing, the related features won't activate — no crash, but check your PATH if something seems off.
-
-### Editor detection
-
-Grove resolves your editor automatically for `grove open` / `o` key — no configuration required. It checks, in order: the `editor` field in `.grove/config.json`, the `$VISUAL` environment variable, `$EDITOR`, then scans for `code`, `cursor`, `windsurf`, `vim`, and `nano`. On macOS it also checks standard app bundle locations, so VS Code works even if `code` isn't in your PATH.
-
-### Local machine setup
-
-Grove generates per-worktree files that should never be committed. Add them to your **global** gitignore so you don't need to touch each repo's `.gitignore`:
-
-```bash
-# Open (or create) your global gitignore
-git config --global core.excludesfile    # shows the current path, e.g. ~/.gitignore_global
-
-# Add the grove entries
-echo '.grove/' >> ~/.gitignore_global
-echo '.env.worktree' >> ~/.gitignore_global
-```
-
-If you haven't set a global gitignore yet:
-
-```bash
-echo '.grove/' >> ~/.gitignore_global
-echo '.env.worktree' >> ~/.gitignore_global
-git config --global core.excludesfile ~/.gitignore_global
-```
-
-| File / Dir      | What it is                                        |
-| --------------- | ------------------------------------------------- |
-| `.grove/`       | Per-worktree metadata (base branch, local config) |
-| `.env.worktree` | Your port assignments and Compose project name    |
-
-These are machine-local and worktree-local — committing them would break other developers' environments.
+| Key       | Action                                       |
+| --------- | -------------------------------------------- |
+| `↑` / `k` | Move up                                      |
+| `↓` / `j` | Move down                                    |
+| `n`       | New worktree                                 |
+| `s`       | Sync — refresh git status, manifests, docker |
+| `o`       | Open in editor                               |
+| `u`       | Docker up                                    |
+| `d`       | Docker down                                  |
+| `D`       | Delete worktree (with confirmation)          |
+| `x`       | Expand / collapse change footprint           |
+| `/`       | Filter by branch name or agent state         |
+| `?`       | Toggle keyboard shortcut help                |
+| `q`       | Quit                                         |
 
 ---
 
-## Preparing a repo for Grove
+## CLI Reference
 
-Grove is a **progressive enhancement layer**. Your project works exactly the same with or without it. There are three levels of integration, each building on the last.
-
-The fastest way to adopt Grove in an existing repo is `grove setup`.
-
----
-
-## `grove setup` — one-time repo adoption
-
-Run `grove setup` from inside any repo and Grove will inspect the project, propose a configuration, and write `.grove/config.json`. Nothing else is modified.
+All commands work without the TUI — suitable for scripting and agent use:
 
 ```bash
-grove setup
-```
-
-```
-Detecting project type…
-
-  ✔ Found docker-compose.yml
-  ✔ App services: web, api
-  ✔ Shared infrastructure: db, redis
-  ✔ Found package.json — framework: vite
-
-  Using preset: docker (auto-detected)
-
-Proposed .grove/config.json:
-
-{
-  "enabled": true,
-  "project": "my-app",
-  "providers": {
-    "web": { "type": "docker-compose", "service": "web" },
-    "api": { "type": "docker-compose", "service": "api" }
-  },
-  "shared": { "db": true, "redis": true },
-  "naming": {
-    "composeProject": "${project}-${branch_safe}",
-    "dbSchema": "my_app_${branch_safe}",
-    "ports": {
-      "WEB_PORT": "auto",
-      "API_PORT": "auto",
-      "DB_PORT": "auto"
-    },
-    "dbPort": "auto",
-    "webPort": "auto",
-    "apiPort": "auto"
-  },
-  "worktrees": { "prefix": "grove", "defaultBaseBranch": "main" }
-}
-
-  Add these to .gitignore (per-worktree, should not be committed):
-    .env.worktree
-    .worktree-manifest.json
-
-Write .grove/config.json? (y/N)
-```
-
-By default, `grove setup` only writes `.grove/config.json`.
-
-When you pass `--refresh-env`, Grove also regenerates `.env.worktree` in the current worktree using naming rules plus env contract resolution.
-
-### Flags
-
-| Flag              | Effect                                                        |
-| ----------------- | ------------------------------------------------------------- |
-| `--preset <name>` | Skip detection, use a known preset (`docker`, `vite`, `node`) |
-| `--dry-run`       | Print the proposed config without writing anything            |
-| `--refresh-env`   | Regenerate `.env.worktree` from the resolved Grove config     |
-| `--yes`           | Skip the confirmation prompt                                  |
-| `--reset`         | Overwrite an existing `.grove/config.json`                    |
-
-```bash
-grove setup --preset docker --yes     # non-interactive, docker preset
-grove setup --dry-run                 # preview only
-grove setup --reset                   # regenerate from scratch
-grove setup --refresh-env             # regenerate .env.worktree in current worktree
-```
-
-### Available presets
-
-| Preset   | When to use                                                                                                    |
-| -------- | -------------------------------------------------------------------------------------------------------------- |
-| `docker` | Project uses Docker Compose. Grove maps services and marks shared infra (postgres, redis, etc.) automatically. |
-| `vite`   | Vite-based frontend (Vue, React, Svelte). Runs `npm run dev` per worktree.                                     |
-| `node`   | Generic Node.js project. Runs `npm run dev` or `npm start` per worktree.                                       |
-
-### Naming templates
-
-The `naming` section in `.grove/config.json` stores **rules, not values**. Templates are expanded at `grove start` time so each worktree gets unique, collision-free names.
-
-| Variable         | Expands to                                                            |
-| ---------------- | --------------------------------------------------------------------- |
-| `${branch}`      | Branch name as-is (e.g. `feat/auth-refresh`)                          |
-| `${branch_safe}` | Branch lowercased, `/` → `-`, max 40 chars (e.g. `feat-auth-refresh`) |
-| `${project}`     | Project name from config                                              |
-
-Example:
-
-- `"composeProject": "${project}-${branch_safe}"` → `myapp-feat-auth-refresh`
-- `"dbSchema": "${project}_${branch_safe}"` → `myapp_feat_auth_refresh`
-- `"ports": { "REDIS_PORT": "auto" }` → Grove allocates a free host port and writes `REDIS_PORT=<port>`
-- `"dbPort": "auto"` → Grove finds a free DB host port at spin time
-- `"webPort": "auto"` → Grove finds a free port at spin time
-
-This means you never manually assign ports or project names. `grove start` generates the `.env.worktree` file for each new worktree automatically.
-
-For arbitrary services (redis, localstack, mailhog, etc.), prefer `naming.ports` so you are not limited to built-in keys.
-
-### Compose env contract detection and alias generation
-
-Grove inspects your Compose contract and generates compatibility aliases automatically.
-
-- Canonical Grove keys remain the source of truth (`WEB_PORT`, `API_PORT`, `DB_PORT`, `DB_SCHEMA`, `COMPOSE_PROJECT_NAME`).
-- If Compose expects alternative **port/project** keys (for example `APP_PORT` or `POSTGRES_PORT`), Grove adds deterministic aliases to `.env.worktree` with matching values.
-- Grove does **not** guess semantic or credential-like values (for example `DATABASE_URL`, `POSTGRES_PASSWORD`, `DB_USER`). Configure those via `envContract` templates or passthrough rules.
-- Detection uses `docker compose config --no-interpolate --format json` when available, falls back to Compose text scanning, and also reads `docker compose config --variables` when supported.
-- If Docker CLI is unavailable during detection, Grove warns and continues with existing behavior.
-
-### Dynamic vars and envContract
-
-Grove treats environment variables in classes so dynamic values stay predictable and safe:
-
-- `managed`: Grove-owned deterministic values (for example ports and project name)
-- `derived`: rendered from explicit templates
-- `passthrough`: copied unchanged from source env files
-- `required`: must be present after rendering
-
-Recommended baseline:
-
-- Let Grove manage deterministic infra vars (`*_PORT`, `COMPOSE_PROJECT_NAME`, and optionally `DB_SCHEMA`).
-- Keep semantic/secret vars template-driven or passthrough.
-- Avoid heuristic generation for app-level vars such as `DATABASE_URL`.
-
-Example:
-
-```json
-{
-  "envContract": {
-    "strict": true,
-    "passthrough": [
-      "POSTGRES_USER",
-      "POSTGRES_PASSWORD",
-      "POSTGRES_DB",
-      "FEATURE_FLAG"
-    ],
-    "derived": {
-      "DATABASE_URL": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=${DB_SCHEMA}"
-    },
-    "required": ["DATABASE_URL"],
-    "sourceEnvFiles": [".env"]
-  }
-}
-```
-
-Resolution behavior:
-
-- Deterministic aliases are created for port/project vars discovered in Compose.
-- `passthrough` vars are copied from source env files (default: `.env`) and existing `.env.worktree` values.
-- `derived` vars are rendered only from explicit templates.
-- If a derived template cannot be fully rendered:
-  - non-strict mode: Grove keeps an existing source value when available and warns
-  - strict mode (or `required`): Grove fails with an actionable error
-
----
-
-### Level 0 — No setup required
-
-Run `grove` in any git repository with worktrees. Grove reads `git worktree list` and displays them. No files to add, nothing to configure.
-
----
-
-### Level 1 — Docker Compose environments
-
-If your project uses Docker Compose and you want Grove to manage per-worktree stacks, add a `.env.worktree` file at the worktree root. This file is **gitignored** — it's created per worktree, not committed.
-
-```bash
-# .env.worktree
-COMPOSE_PROJECT_NAME=my-app-feat-auth   # used as `docker compose -p` value
-WEB_PORT=8081                           # primary app URL (shown in TUI, used by agents)
-DB_PORT=5433                            # postgres host port for this worktree
-REDIS_PORT=6380                         # redis host port for this worktree (optional)
-LOCALSTACK_PORT=4567                    # optional secondary service
-REDIS_DB=1                              # informational — shown in TUI card
-DB_SCHEMA=my_app_feat_auth             # informational — shown in TUI card
-```
-
-Grove reads this file to discover port bindings and the Compose project name, and can generate or refresh it via `grove start` and `grove setup --refresh-env`. Each worktree gets its own `.env.worktree` with unique ports and a unique `COMPOSE_PROJECT_NAME` to keep stacks isolated.
-
-Before `docker compose up`, Grove runs a preflight resolve (`docker compose --env-file .env.worktree config --format json`) and fails fast on common contract issues:
-
-- missing expected variables
-- published host-port collisions with running containers
-- fallback-to-default port mismatches (for example resolving to `3000` or `5432` when Grove allocated different values)
-
-Error output includes the affected service/variable and an actionable fix.
-
-For Postgres or other host-bound services, make sure your compose file uses the generated env var in its `ports` mapping, for example:
-
-```yaml
-services:
-  db:
-    ports:
-      - "${DB_PORT:-5432}:5432"
-```
-
-Add `.env.worktree` to your `.gitignore`:
-
-```
-.env.worktree
-```
-
-Grove also checks for a `docker-compose.yml` or `compose.yaml` at the repo root to confirm Docker support exists before showing any Docker UI.
-
----
-
-### Level 2 — Explicit Grove config
-
-For full control over how Grove manages environments, add `.grove/config.json` to your repo:
-
-```json
-{
-  "enabled": true,
-  "project": "my-app",
-  "providers": {
-    "web": { "type": "docker-compose", "service": "web" },
-    "api": { "type": "docker-compose", "service": "api" }
-  },
-  "shared": { "db": true, "redis": true },
-  "sharedComposeFile": "compose.shared.yaml",
-  "naming": {
-    "composeProject": "my-app-${branch_safe}",
-    "sharedProject": "my-app-shared",
-    "dbSchema": "my_app_${branch_safe}",
-    "ports": {
-      "WEB_PORT": "auto",
-      "API_PORT": "auto",
-      "DB_PORT": "auto",
-      "REDIS_PORT": "auto",
-      "LOCALSTACK_PORT": "auto"
-    },
-    "dbPort": "auto",
-    "webPort": "auto",
-    "apiPort": "auto"
-  },
-  "envContract": {
-    "strict": true,
-    "passthrough": ["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"],
-    "derived": {
-      "DATABASE_URL": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=${DB_SCHEMA}"
-    },
-    "required": ["DATABASE_URL"],
-    "sourceEnvFiles": [".env"]
-  },
-  "worktrees": {
-    "root": "/Users/you/worktrees"
-  }
-}
-```
-
-When this file is present, Grove uses it instead of inferring the environment. You can commit this file — it describes how the project works, not per-worktree state.
-
-**Provider types:**
-
-| `type`           | When to use                                     |
-| ---------------- | ----------------------------------------------- |
-| `docker-compose` | Project uses Docker Compose                     |
-| `node-scripts`   | Plain Node project, `npm run dev` / `npm start` |
-| `custom-shell`   | Custom start command                            |
-
-**Top-level config fields:**
-
-| Field                         | Default                          | Description                                                   |
-| ----------------------------- | -------------------------------- | ------------------------------------------------------------- |
-| `sharedComposeFile`           | `compose.shared.yaml`            | Path to the shared infrastructure compose file                |
-| `editor`                      | auto-detected                    | Editor to open with `grove open` / `o` key                    |
-| `envContract`                 | unset                            | Dynamic env var policy (managed/derived/passthrough/required) |
-| `worktrees.root`              | `<repo-parent>/<repo>-worktrees` | Where new worktrees are placed                                |
-| `worktrees.defaultBaseBranch` | `main`                           | Default base for `grove start --new` when `--base` is omitted |
-
----
-
-## Shared infrastructure
-
-When a project uses Docker Compose, some services (database, Redis, LocalStack) are shared across all worktrees while others (web server, API) run isolated per branch. Grove manages these two layers separately.
-
-### Compose file layout
-
-```
-compose.yaml           # per-worktree: web, api, worker
-compose.shared.yaml    # shared: db, redis, localstack
-```
-
-**`compose.shared.yaml`** runs once under a fixed project name, regardless of which branch is active:
-
-```yaml
-services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_PASSWORD: dev
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-
-volumes:
-  db_data:
-```
-
-**`compose.yaml`** runs once per worktree and connects to the shared network to reach `db` and `redis` by hostname:
-
-```yaml
-services:
-  web:
-    build: .
-    ports:
-      - "${WEB_PORT}:3000"
-    environment:
-      DATABASE_URL: postgres://postgres:dev@db:5432/${DB_SCHEMA}
-      REDIS_URL: redis://redis:6379
-    networks:
-      - default
-      - shared_net
-
-networks:
-  shared_net:
-    external: true
-    name: ${SHARED_PROJECT_NAME}_default # Grove writes this into .env.worktree
-```
-
-Docker Compose automatically creates a network named `<project>_default` for every project. Per-worktree services join the shared project's network as an external network — that's how they reach `db` and `redis` by service name without any DNS configuration.
-
-### Grove config for shared infrastructure
-
-```json
-{
-  "shared": { "db": true, "redis": true },
-  "sharedComposeFile": "compose.shared.yaml",
-  "naming": {
-    "sharedProject": "my-app-shared",
-    "composeProject": "my-app-${branch_safe}"
-  }
-}
-```
-
-`naming.sharedProject` is required to enable shared stack management. When set, Grove writes `SHARED_PROJECT_NAME=my-app-shared` into every `.env.worktree`, so `compose.yaml` can resolve the external network name automatically.
-
-The compose file path defaults to `compose.shared.yaml` at the repo root. Override it with `sharedComposeFile`:
-
-```json
-{ "sharedComposeFile": "docker/compose.shared.yaml" }
-```
-
-### Managing the shared stack
-
-```bash
-# Start shared infrastructure (idempotent — safe to run if already up)
-grove shared up
-
-# Check shared stack state
-grove shared status
-
-# Stop shared infrastructure
-grove shared down
-```
-
-`grove start` automatically starts the shared stack if it is not already running. You only need to run `grove shared up` manually if you want to start it before any worktree is active, or if `grove start` warns that it could not find the compose file.
-
-`grove delete` stops the per-worktree stack but never touches the shared stack, since other worktrees may depend on it.
-
-### `.env.worktree` with shared stack
-
-When `naming.sharedProject` is configured, the generated `.env.worktree` looks like:
-
-```env
-COMPOSE_PROJECT_NAME=my-app-feat-auth
-WEB_PORT=8081
-API_PORT=8082
-DB_PORT=5433
-DB_SCHEMA=my_app_feat_auth
-SHARED_PROJECT_NAME=my-app-shared
-```
-
----
-
-### Level 3 — Agent manifest
-
-Any process (an AI agent, a shell script, Grove itself) can write a `.worktree-manifest.json` file at the worktree root to communicate state back to Grove. Grove reads this file on sync and displays it in the TUI.
-
-```json
-{
-  "port": 3001,
-  "agentName": "claude",
-  "agentStatus": "running",
-  "agentActivity": "editing AuthService.ts",
-  "startedAt": "2025-04-10T14:23:00Z",
-  "testResults": {
-    "passed": 42,
-    "failed": 0,
-    "skipped": 3,
-    "lastRun": "2025-04-10T14:30:00Z"
-  },
-  "notes": "Blocked on the auth question — revisit before merging"
-}
-```
-
-`agentStatus` values: `idle` · `running` · `waiting` · `done` · `errored`
-
-This file is **gitignored**:
-
-```
-.worktree-manifest.json
-```
-
----
-
-## AGENTS.md — Instructing AI agents about Grove
-
-If you want AI agents (Claude Code, Codex, or others) running in your worktrees to participate in Grove's environment model, add an `AGENTS.md` file to your repo root. Agents read this file when they start a session.
-
-Here is a template to adapt:
-
-```markdown
-# Agent Instructions
-
-## Environment
-
-You are running inside a git worktree managed by Grove. Each worktree is an
-isolated environment with its own Docker stack, port assignments, and database
-schema. Do not assume ports or assume shared state with other worktrees.
-
-## Getting your environment
-
-Before starting work, discover your environment:
-
-    grove status <your-branch-name> --json
-
-This returns a JSON object:
-
-    {
-      "ok": true,
-      "web": "http://localhost:8081",
-      "api": "http://localhost:4567",
-      "source": "grove",
-      "mode": "docker-compose",
-      "agent": "idle"
-    }
-
-Use the `web` URL for any browser-facing requests. Use the `api` URL for
-backend or LocalStack calls. Never hardcode ports — always query Grove first.
-
-## Reporting your status
-
-Write `.worktree-manifest.json` at the root of this worktree to report your
-status back to Grove. Update it as your work progresses.
-
-    {
-      "agentName": "claude",
-      "agentStatus": "running",
-      "agentActivity": "Brief description of what you're doing right now",
-      "startedAt": "<ISO timestamp when you began>",
-      "testResults": {
-        "passed": 0,
-        "failed": 0,
-        "skipped": 0,
-        "lastRun": "<ISO timestamp>"
-      }
-    }
-
-Set `agentStatus` to:
-
-- `running` — actively working
-- `waiting` — blocked, waiting for tests, or need human input
-- `done` — finished successfully
-- `errored` — encountered an unrecoverable problem
-
-The `agentActivity` string is displayed live in the Grove TUI — keep it short
-and meaningful (e.g. "writing tests for AuthService", "running migration").
-
-## Parallel agent rules
-
-Multiple agents may be running concurrently on different worktrees. To avoid
-conflicts:
-
-1. Never modify files outside your worktree directory.
-2. Never write to shared infrastructure (the main database, shared Redis).
-   Use the schema or Redis DB assigned to your worktree via `.env.worktree`.
-3. Do not push directly to `main` or any branch another agent is working on.
-4. If you need to pull in upstream changes, run `git rebase origin/main`
-   inside your worktree — not a merge.
-5. Before opening a PR, check `grove status --json` to confirm no other
-   agent is working on an overlapping area.
-
-## Starting your stack
-
-If your environment is not already running:
-
-    grove start <your-branch-name>
-
-This will start the Docker Compose stack for your worktree and return the
-environment URLs.
-
-## Files that are yours (gitignored, per-worktree)
-
-- `.env.worktree` — your port assignments and Compose project name
-- `.worktree-manifest.json` — your status, written by you
-
-Do not commit either of these files.
-```
-
-You can adjust the specific commands, tone, and rules for your project. The important parts are: how to discover the environment, how to report status, and the parallel agent rules for avoiding conflicts.
-
----
-
-## Basic usage
-
-### TUI mode
-
-Run `grove` with no arguments to open the interactive interface:
-
-```bash
-grove
-```
-
-**Navigation:**
-
-| Key       | Action                                                 |
-| --------- | ------------------------------------------------------ |
-| `↑` / `k` | Move up in worktree list                               |
-| `↓` / `j` | Move down                                              |
-| `n`       | New worktree — prompts for branch name and base branch |
-| `s`       | Sync — refresh all manifests, git status, docker state |
-| `o`       | Open selected worktree in editor                       |
-| `u`       | Docker up (selected worktree)                          |
-| `d`       | Docker down (selected worktree)                        |
-| `D`       | Delete selected worktree (with confirmation)           |
-| `x`       | Expand / collapse change footprint                     |
-| `/`       | Filter worktrees by branch name or agent state         |
-| `Esc`     | Clear filter / cancel prompt                           |
-| `?`       | Toggle keyboard shortcut help                          |
-| `q`       | Quit                                                   |
-
-### Command mode
-
-All commands work without opening the TUI, suitable for scripting and agent use.
-
-```bash
-# Show all worktrees with agent and docker state
-grove status
-
-# Machine-readable status for a specific environment (for agents/scripts)
-grove status feat/auth-refresh --json
-
-# Check out an existing remote branch as a worktree, start its environment
-grove start feat/my-feature
-
-# Create a worktree from a PR number (resolves branch via gh)
-grove start 1234
-
-# Create a new branch off main
-grove start feat/my-feature --new
-
-# Create a new branch off a specific base branch
-grove start feat/my-feature --new --base hotfix-from-main-setup
-
-# Force .env.worktree regeneration from current Grove config for this worktree
-grove start feat/my-feature --refresh-env
-
-# Attach to an existing worktree and (re)start its environment
-grove start feat/my-feature
-
-# Open a worktree in your editor
-grove open feat/my-feature
-
-# Refresh all manifests and git status
-grove sync
-
-# Stop the environment for a worktree
-grove stop feat/my-feature
-
-# Remove a worktree (brings down docker stack first, prompts for confirmation)
-grove delete feat/my-feature
-grove delete feat/my-feature --delete-branch   # also deletes the git branch
-grove delete feat/my-feature --yes             # skip confirmation
-
-# Clean up stale worktree metadata
-grove prune
-
-# Shared infrastructure stack
-grove shared up
+grove status                               # table of all worktrees
+grove status feat/my-feature --json        # machine-readable JSON for agents
+grove start feat/my-feature                # create or attach worktree, start env
+grove start feat/my-feature --new          # create new branch off default branch
+grove start feat/my-feature --new --base develop
+grove start 1234                           # resolve PR number to branch via gh
+grove open feat/my-feature                 # open in editor
+grove stop feat/my-feature                 # stop the environment
+grove sync                                 # refresh all manifests and git status
+grove delete feat/my-feature               # remove worktree (confirmation prompt)
+grove delete feat/my-feature --yes         # skip confirmation
+grove delete feat/my-feature --delete-branch
+grove prune                                # clean up stale worktree metadata
+grove setup                                # detect project type, write .grove/config.json
+grove setup --preset docker --yes          # non-interactive
+grove setup --dry-run                      # preview without writing
+grove shared up                            # start shared infrastructure stack
 grove shared down
 grove shared status
-
-# Docker lifecycle for a specific worktree (also available as u/d in TUI)
-grove docker up feat/my-feature
+grove docker up feat/my-feature            # start compose stack for a worktree
 grove docker down feat/my-feature
-grove docker teardown feat/my-feature   # destroys volumes — prompts for confirmation
-
-# Diagnose compose env contract vs generated env vars
-grove doctor env feat/my-feature
-
-# Show resolved configuration (worktree root, editor, grove config)
-grove info
-```
-
-### Troubleshooting env mismatches
-
-If `docker compose` appears to ignore Grove ports:
-
-1. Regenerate env for the current worktree:
-
-```bash
-grove setup --refresh-env
-```
-
-2. Inspect contract expectations and missing aliases:
-
-```bash
-grove doctor env
-```
-
-3. For target worktrees started via Grove:
-
-```bash
-grove start feat/my-feature --refresh-env
+grove docker teardown feat/my-feature      # destroy volumes (confirmation required)
+grove doctor                               # run Grove health checks
+grove doctor env feat/my-feature           # inspect compose env contract
+grove info                                 # show resolved configuration
 ```
 
 ---
 
-## Environment provider detection
+## Philosophy
 
-When you run `grove start` or `grove status --json`, Grove resolves the environment provider automatically. Detection order:
+**Isolation is freedom.** When every branch has its own environment, you can experiment without fear. You're not sharing a database or fighting port conflicts. Each worktree is its own world.
 
-1. **`.grove/config.json`** — explicit configuration wins
-2. **`docker-compose.yml` + `.env.worktree`** — inferred as docker-compose
-3. **`package.json`** with a `dev` or `start` script — inferred as node-scripts (auto-detects port for Vite, Next.js, etc.)
-4. **Fallback** — reports environment as unknown, takes no destructive action
+**Context switching should be instant.** Switching tasks shouldn't mean running `docker down`, checking out a branch, and waiting for a rebuild. Grove keeps environments running so you can switch focus in seconds.
 
----
+**Agents need structure.** AI coding agents work best when they have predictable environments and a way to report status. Grove provides both without inventing a new abstraction layer on top of your tools.
 
-## Example: parallel agent workflow
-
-Suppose you have a feature in progress and want to start a second agent to work on a separate fix concurrently.
-
-**1. Set up the first environment**
-
-```bash
-grove start feat/auth-refresh
-```
-
-```
-Creating worktree at ~/repos/my-app-worktrees/feat-auth-refresh…
-Resolving environment provider…
-  → provider: docker-compose
-Starting environment…
-  web: http://localhost:8081
-  source: grove
-✓ Ready: feat/auth-refresh
-```
-
-**2. Start a second environment in parallel**
-
-```bash
-grove start fix/helm-chart
-```
-
-```
-Creating worktree at ~/repos/my-app-worktrees/fix-helm-chart…
-Resolving environment provider…
-  → provider: docker-compose
-Starting environment…
-  web: http://localhost:8082
-  source: grove
-✓ Ready: fix/helm-chart
-```
-
-Each worktree has its own `.env.worktree` with different ports and a unique Compose project name — the stacks run in parallel without interfering.
-
-**3. Monitor both in the TUI**
-
-```bash
-grove
-```
-
-As each agent writes to `.worktree-manifest.json`, the TUI reflects their state in real time on `s` (sync).
-
-**4. Check environment from inside an agent session**
-
-An agent running in a worktree can query its own environment:
-
-```bash
-grove status feat/auth-refresh --json
-```
-
-```json
-{
-  "ok": true,
-  "web": "http://localhost:8081",
-  "api": null,
-  "source": "grove",
-  "mode": "docker-compose",
-  "agent": "running"
-}
-```
-
-**5. Tear down when done**
-
-```bash
-grove stop feat/auth-refresh
-grove docker teardown feat/auth-refresh   # if you want to destroy volumes
-```
+**Zero lock-in.** Your project works exactly the same with or without Grove. There's nothing to undo. Grove adds a layer on top of standard git and Docker primitives — remove Grove and everything still works.
 
 ---
 
-## Development
+## Documentation
 
-### Running tests
-
-Grove uses [Vitest](https://vitest.dev/) with React support for the Ink TUI components.
-
-```bash
-# Run tests in watch mode
-npm test
-
-# Run tests once (CI mode)
-npm run test:run
-
-# Run with coverage report
-npm run coverage
-```
-
-Coverage output lands in `coverage/` as HTML and text. The thresholds are 80% lines/functions and 70% branches.
-
-**Test layout:** each source file has a co-located test file (e.g. `src/tui/App.tsx` → `src/tui/App.test.tsx`). TUI component tests use a custom `render-for-test` helper (in `src/tui/`) instead of ink-testing-library directly — this is needed for ink v4 compatibility (see the file header for details).
+- [Getting Started](https://christinabranson.github.io/git-grove/getting-started/installation)
+- [Quick Start](https://christinabranson.github.io/git-grove/getting-started/quickstart)
+- [Core Concepts](https://christinabranson.github.io/git-grove/getting-started/concepts)
+- [AI Workflow Guide](https://christinabranson.github.io/git-grove/guides/ai-workflows)
+- [Docker Guide](https://christinabranson.github.io/git-grove/guides/docker)
+- [Command Reference](https://christinabranson.github.io/git-grove/commands/init)
 
 ---
 
-## Project layout
+## Contributing
 
+The codebase is TypeScript — Ink for the TUI, Commander for the CLI, Vitest for tests.
+
+```bash
+git clone https://github.com/christinabranson/git-grove.git
+cd git-grove
+npm install
+npm test           # watch mode
+npm run test:run   # CI mode
+npm run build
 ```
-grove-wt/
-├── src/
-│   ├── index.ts              # CLI entry point — all commands
-│   ├── types.ts              # Worktree, AgentManifest, GroveEnvironment, etc.
-│   ├── commands/
-│   │   └── status.ts         # Table output for `grove status`
-│   ├── data/
-│   │   ├── worktrees.ts      # git worktree parsing, manifest/docker reading
-│   │   └── groveConfig.ts    # .grove/config.json loader
-│   ├── providers/
-│   │   ├── index.ts          # Re-exports
-│   │   ├── types.ts          # GroveProvider interface
-│   │   ├── docker-compose.ts # DockerComposeProvider
-│   │   ├── node-scripts.ts   # NodeScriptsProvider
-│   │   ├── shared.ts         # Shared infrastructure stack management
-│   │   └── discover.ts       # Provider detection/inference engine
-│   └── tui/
-│       ├── App.tsx           # Root TUI component, keybinds, layout
-│       ├── WorktreeList.tsx  # Left panel — navigable worktree list
-│       ├── DetailPanel.tsx   # Right panel — agent, docker, change footprint
-│       ├── ChangeFootprint.tsx
-│       ├── KeybindBar.tsx
-│       ├── FilterBar.tsx
-│       ├── editor.ts         # Editor detection and launch
-│       └── useTerminalSize.ts
-```
+
+Test layout: co-located test files (`src/tui/App.tsx` → `src/tui/App.test.tsx`). TUI components use a custom `render-for-test` helper for ink v4 compatibility.
+
+Before opening a PR: `npm run test:run`, `npm run build`, and `npx prettier --check .` must all pass. CI enforces these.
 
 ---
 
-## Settings
+## License
 
-Grove global settings are stored in `~/.grove/config.json`. Configure with:
-
-```bash
-grove config set <key> <value>
-```
-
-| Key             | Default                                | Description                                     |
-| --------------- | -------------------------------------- | ----------------------------------------------- |
-| `worktreeRoot`  | `<repo-parent>/<repo-name>-worktrees/` | Where new worktrees are placed                  |
-| `aiProvider`    | `codex`                                | `codex` or `claude`                             |
-| `theme`         | `dark`                                 | `dark` or `light`                               |
-| `notifications` | `false`                                | OS-level notifications when agent state changes |
+MIT
