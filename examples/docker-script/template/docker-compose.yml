@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_SCHEMA:-app}
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: node:18-alpine
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://app:app@db:5432/${DB_SCHEMA:-app}
+    command: >
+      node -e "
+        const http = require('http');
+        const db = process.env.DATABASE_URL;
+        http.createServer((_, r) => r.end('docker-script env=' + process.env.NODE_ENV + ' db=' + db + '\n')).listen(3000, () => console.log('listening on 3000'));
+      "

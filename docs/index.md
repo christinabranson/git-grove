@@ -17,8 +17,8 @@ hero:
       link: https://github.com/christinabranson/git-grove
 
 features:
-  - title: Parallel environments
-    details: Each branch gets its own isolated environment — its own Docker stack, unique ports, and database schema. Run as many as you need simultaneously.
+  - title: Isolated environments
+    details: "For each branch, Grove writes a `.env.worktree` file with unique values: a different port, a different Docker project name, a different schema. Your Compose file reads them — each branch gets its own stack. No coordination needed."
   - title: AI agent-ready
     details: Agents discover their environment via `grove status --json` and report status back via `.worktree-manifest.json`. Grove displays it live in the TUI.
   - title: Zero lock-in

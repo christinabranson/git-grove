@@ -43,7 +43,7 @@ grove start feat/my-feature --new
 grove start 1234
 ```
 
-Grove creates the worktree, generates `.env.worktree` with unique ports (if configured), starts the shared stack, and boots the environment.
+Grove creates the worktree, then generates a `.env.worktree` file with unique values for this branch — a different port, Docker project name, and database schema from every other worktree. Your `docker-compose.yml` reads these variables, so each branch gets a completely isolated stack with no manual port tracking.
 
 Expected output for a Docker project:
 

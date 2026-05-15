@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "project": "docker-script",
+  "providers": {
+    "web": {
+      "type": "custom-shell",
+      "service": "web",
+      "script": "bin/start.sh",
+      "stopScript": "bin/stop.sh"
+    }
+  },
+  "naming": {
+    "composeProject": "${project}-${branch_safe}",
+    "dbSchema": "${project}_${branch_safe}",
+    "ports": {
+      "WEB_PORT": "auto",
+      "DB_PORT": "auto"
+    }
+  },
+  "worktrees": {
+    "prefix": "grove",
+    "defaultBaseBranch": "main"
+  }
+}
