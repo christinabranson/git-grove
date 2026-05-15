@@ -2,6 +2,8 @@ import Table from "cli-table3";
 import chalk from "chalk";
 import type { Worktree } from "../types.js";
 import { hyperlink } from "../utils/hyperlink.js";
+import { loadWorktrees } from "../data/worktrees.js";
+import { discoverProvider } from "../providers/index.js";
 
 function dockerCell(worktree: Worktree): string {
   if (!worktree.docker) return chalk.gray("-");
@@ -38,6 +40,39 @@ function changesCell(worktree: Worktree): string {
   if (!worktree.changeFootprint) return chalk.gray("clean");
   const n = worktree.changeFootprint.totalFiles;
   return chalk.yellow(`+${n} file${n === 1 ? "" : "s"}`);
+}
+
+export async function runStatus(
+  repoPath: string,
+  env?: string,
+  opts: { json?: boolean } = {},
+): Promise<void> {
+  if (opts.json && env) {
+    const { worktrees: wtList } = await loadWorktrees(repoPath);
+    const wt = wtList.find(
+      (w) => w.branch === env || w.branch.endsWith(`/${env}`),
+    );
+    if (!wt) {
+      throw new Error(`no worktree found for: ${env}`);
+    }
+    const provider = await discoverProvider(wt.path, env);
+    const groveEnv = await provider.status();
+    console.log(
+      JSON.stringify({
+        ok: true,
+        web: groveEnv.web?.url ?? null,
+        api: groveEnv.api?.url ?? null,
+        source: groveEnv.metadata.source,
+        mode: groveEnv.metadata.provider,
+      }),
+    );
+    return;
+  }
+
+  const { worktrees, ghWarning } = await loadWorktrees(repoPath);
+  if (ghWarning)
+    process.stderr.write(chalk.yellow(`\n  ⚠  grove: ${ghWarning}\n\n`));
+  printStatus(worktrees);
 }
 
 export function printStatus(worktrees: Worktree[]): void {

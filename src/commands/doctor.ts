@@ -2,6 +2,14 @@ import { existsSync } from "fs";
 import path from "path";
 import chalk from "chalk";
 import { execa } from "execa";
+import { loadWorktrees } from "../data/worktrees.js";
+import { loadGroveConfig } from "../data/groveConfig.js";
+import {
+  discoverComposeContract,
+  formatDoctorEnvReport,
+  preflightComposeEnv,
+  readEnvFile,
+} from "../providers/docker-compose-contract.js";
 
 export interface DoctorCheck {
   name: string;
@@ -124,6 +132,35 @@ export function formatDoctorReport(result: DoctorResult): string {
       : line;
   });
   return lines.join("\n");
+}
+
+export async function runDoctorEnv(
+  repoPath: string,
+  branch?: string,
+): Promise<{ ok: boolean }> {
+  const { worktrees } = await loadWorktrees(repoPath);
+  const wt = branch
+    ? worktrees.find(
+        (w) => w.branch === branch || w.branch.endsWith(`/${branch}`),
+      )
+    : worktrees[0];
+  if (!wt) {
+    throw new Error("No worktree found");
+  }
+
+  const contract = await discoverComposeContract(wt.path);
+  const envVars = await readEnvFile(wt.path);
+  const wtConfig =
+    (await loadGroveConfig(wt.path)) ?? (await loadGroveConfig(repoPath));
+  const preflight = await preflightComposeEnv(
+    wt.path,
+    contract,
+    envVars,
+    wtConfig?.envContract,
+  );
+
+  console.log(formatDoctorEnvReport(contract, envVars, preflight));
+  return { ok: preflight.ok };
 }
 
 export async function runDoctor(
