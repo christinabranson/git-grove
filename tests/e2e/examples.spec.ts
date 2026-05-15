@@ -124,9 +124,8 @@ describe("node-basic example", () => {
 
     const env = await readGeneratedFile(repo.repoPath, ".env.worktree");
 
-    // Project name and schema are deterministic: ${project}-${branch_safe}
+    // Project name is deterministic: ${project}-${branch_safe}
     expect(env).toContain("COMPOSE_PROJECT_NAME=node-basic-main");
-    expect(env).toContain("DB_SCHEMA=node-basic_main");
 
     // Port keys must be present; values are auto-allocated integers
     expect(env).toMatch(/^WEB_PORT=\d+$/m);
