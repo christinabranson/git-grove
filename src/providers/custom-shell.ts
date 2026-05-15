@@ -83,8 +83,19 @@ export class CustomShellProvider implements GroveProvider {
     private readonly serviceOverride?: string,
   ) {}
 
+  private resolveScript(script: string, label: string): string {
+    const resolved = path.resolve(this.worktreePath, script);
+    if (
+      !resolved.startsWith(this.worktreePath + path.sep) &&
+      resolved !== this.worktreePath
+    ) {
+      throw new Error(`${label} path escapes the worktree root: ${script}`);
+    }
+    return resolved;
+  }
+
   async start(): Promise<GroveEnvironment> {
-    const scriptPath = path.resolve(this.worktreePath, this.script);
+    const scriptPath = this.resolveScript(this.script, "script");
     if (!existsSync(scriptPath)) {
       throw new Error(`Custom start script not found: ${scriptPath}`);
     }
@@ -112,7 +123,7 @@ export class CustomShellProvider implements GroveProvider {
     const { raw, typed } = await parseEnvWorktree(this.worktreePath);
 
     if (this.stopScript) {
-      const stopPath = path.resolve(this.worktreePath, this.stopScript);
+      const stopPath = this.resolveScript(this.stopScript, "stopScript");
       if (!existsSync(stopPath)) {
         throw new Error(`Custom stop script not found: ${stopPath}`);
       }
@@ -131,10 +142,17 @@ export class CustomShellProvider implements GroveProvider {
       return;
     }
 
-    // Fallback: stop via docker compose if a compose file is present
-    const hasCompose =
-      existsSync(path.join(this.worktreePath, "docker-compose.yml")) ||
-      existsSync(path.join(this.worktreePath, "compose.yml"));
+    // Fallback: stop via docker compose if a compose file is present.
+    // Matches the same filename list used by docker-compose-contract.ts.
+    const composeFiles = [
+      "compose.yaml",
+      "compose.yml",
+      "docker-compose.yml",
+      "docker-compose.yaml",
+    ];
+    const hasCompose = composeFiles.some((f) =>
+      existsSync(path.join(this.worktreePath, f)),
+    );
 
     if (hasCompose) {
       await execa(

@@ -71,7 +71,7 @@ export interface GroveConfigProvider {
   command?: string;
   /** Path to the startup script (relative to worktree root). Required for custom-shell. */
   script?: string;
-  /** Path to the teardown script (relative to worktree root). Falls back to docker compose down when absent. */
+  /** Path to the teardown script (relative to worktree root). Falls back to docker compose down when absent and a compose file is detected. */
   stopScript?: string;
 }
 

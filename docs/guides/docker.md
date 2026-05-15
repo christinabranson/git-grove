@@ -229,7 +229,7 @@ Your script is responsible for the actual `docker compose up` call and any surro
 | ------------ | -------- | ----------------------------------------------------------------------------- |
 | `script`     | yes      | Path to the startup script, relative to the worktree root                     |
 | `stopScript` | no       | Path to the teardown script. Falls back to `docker compose down` when absent. |
-| `service`    | no       | Compose service name used by `grove status` to check the running state        |
+| `service`    | no       | Reserved — not currently used by the runtime                                  |
 
 ### Writing the script
 
