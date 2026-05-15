@@ -24,6 +24,7 @@ import {
 import { loadGroveConfig } from "./data/groveConfig.js";
 import { expandNaming } from "./setup/naming.js";
 import { runSetup } from "./commands/setup.js";
+import { runDoctor } from "./commands/doctor.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
 import { warnIfHardcodedComposePorts } from "./utils/hardcodedPortsCheck.js";
 import {
@@ -923,7 +924,22 @@ program
     },
   );
 
+// `grove doctor`     — runs health checks (action below)
+// `grove doctor env` — inspects compose env contract (subcommand below)
+// --json is scoped to the parent; it is not visible to `doctor env`.
 const doctor = program.command("doctor").description("Run Grove diagnostics");
+
+doctor
+  .option("--json", "Output diagnostics as JSON")
+  .action(async (opts: { json?: boolean }) => {
+    try {
+      const result = await runDoctor(process.cwd(), { json: opts.json });
+      if (!result.ok) process.exit(1);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
 
 doctor
   .command("env [branch]")

@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+  "project": "docker-basic",
+  "providers": {
+    "web": {
+      "type": "docker-compose",
+      "service": "web"
+    }
+  },
+  "naming": {
+    "composeProject": "${project}-${branch_safe}",
+    "dbSchema": "${project}_${branch_safe}",
+    "ports": {
+      "WEB_PORT": "auto",
+      "API_PORT": "auto",
+      "DB_PORT": "auto"
+    },
+    "dbPort": "auto",
+    "webPort": "auto",
+    "apiPort": "auto"
+  },
+  "worktrees": {
+    "prefix": "grove",
+    "defaultBaseBranch": "main"
+  }
+}
