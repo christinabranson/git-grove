@@ -187,6 +187,103 @@ grove doctor env feat/my-feature
 
 `grove doctor env` shows expected variables, detected port references, and any mismatches.
 
+## Custom startup scripts
+
+Sometimes `docker compose up` is not enough. If your startup sequence needs steps that plain Compose cannot express — waiting for a database to be healthy, running per-worktree schema migrations, seeding fixture data on first boot — use the `custom-shell` provider.
+
+### How it works
+
+Grove still generates `.env.worktree` exactly as it would for a `docker-compose` project. Instead of calling `docker compose up` itself, it:
+
+1. Parses `.env.worktree` and injects every variable into the script's environment.
+2. Sets `GROVE_ENV_FILE=<worktree-path>/.env.worktree` so the script can forward the file to `docker compose --env-file "$GROVE_ENV_FILE"`.
+3. Runs your script with `cwd` set to the worktree root.
+
+Your script is responsible for the actual `docker compose up` call and any surrounding logic.
+
+### Config
+
+```json
+{
+  "project": "my-app",
+  "providers": {
+    "web": {
+      "type": "custom-shell",
+      "service": "web",
+      "script": "bin/start.sh",
+      "stopScript": "bin/stop.sh"
+    }
+  },
+  "naming": {
+    "composeProject": "${project}-${branch_safe}",
+    "dbSchema": "${project}_${branch_safe}",
+    "ports": {
+      "WEB_PORT": "auto",
+      "DB_PORT": "auto"
+    }
+  }
+}
+```
+
+| Field        | Required | Description                                                                   |
+| ------------ | -------- | ----------------------------------------------------------------------------- |
+| `script`     | yes      | Path to the startup script, relative to the worktree root                     |
+| `stopScript` | no       | Path to the teardown script. Falls back to `docker compose down` when absent. |
+| `service`    | no       | Compose service name used by `grove status` to check the running state        |
+
+### Writing the script
+
+All `.env.worktree` variables are already in the environment when the script runs. You do not need to `source` the file — though you can pass it to `docker compose` via `$GROVE_ENV_FILE`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMPOSE_FLAGS=(-p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE")
+
+# Start the database and wait for its healthcheck.
+docker compose "${COMPOSE_FLAGS[@]}" up -d db
+docker compose "${COMPOSE_FLAGS[@]}" wait db
+
+# Run migrations once per worktree.
+SEED_MARKER=".grove/.seeded-${COMPOSE_PROJECT_NAME}"
+if [[ ! -f "$SEED_MARKER" ]]; then
+  docker compose "${COMPOSE_FLAGS[@]}" run --rm db \
+    psql -U app -c "CREATE SCHEMA IF NOT EXISTS \"$DB_SCHEMA\";"
+  touch "$SEED_MARKER"
+fi
+
+# Bring up the application.
+docker compose "${COMPOSE_FLAGS[@]}" up -d --build web
+echo "Ready at http://localhost:${WEB_PORT}"
+```
+
+Variables always available in the script:
+
+| Variable               | Example value                                   |
+| ---------------------- | ----------------------------------------------- |
+| `COMPOSE_PROJECT_NAME` | `my-app-feat-login`                             |
+| `WEB_PORT`             | `8081`                                          |
+| `DB_PORT`              | `5433`                                          |
+| `DB_SCHEMA`            | `my_app_feat_login`                             |
+| `GROVE_ENV_FILE`       | `/home/user/worktrees/feat-login/.env.worktree` |
+
+Any additional variables from `naming.ports` or `envContract.passthrough` / `envContract.derived` are also present.
+
+### Stop script
+
+If `stopScript` is omitted, `grove stop` falls back to `docker compose -p $COMPOSE_PROJECT_NAME down`. Provide a stop script when you need custom teardown:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE" down
+```
+
+### Full example
+
+See the [Docker Script example](/examples/docker-script) for a complete project using this pattern.
+
 ## Docker commands
 
 ```bash
