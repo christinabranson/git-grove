@@ -50,12 +50,20 @@ grove start feat/my-feature --json
 
 ## JSON output
 
-With `--json`, Grove outputs a single JSON object:
+With `--json`, Grove outputs the full `GroveEnvironment` object:
 
 ```json
 {
-  "web": { "url": "http://localhost:8081" },
+  "name": "feat/my-feature",
+  "worktreePath": "/home/user/repos/my-app-worktrees/feat-my-feature",
+  "web": {
+    "url": "http://localhost:8081",
+    "port": 8081
+  },
   "api": null,
+  "db": {
+    "mode": "shared"
+  },
   "metadata": {
     "source": "grove",
     "provider": "docker-compose"
@@ -63,7 +71,9 @@ With `--json`, Grove outputs a single JSON object:
 }
 ```
 
-Useful for AI agents and shell scripts that need to discover environment URLs.
+`web` and `api` are `null` when the provider doesn't expose that endpoint. `db.mode` is one of `"shared"`, `"local"`, or `"unknown"`.
+
+For a simpler status-only query from agents, prefer `grove status <branch> --json` which returns a flatter shape (`ok`, `web`, `api`, `source`, `mode`).
 
 ## PR checkout
 

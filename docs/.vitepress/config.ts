@@ -5,9 +5,9 @@ export default defineConfig({
   description:
     "Mission control for parallel git worktrees. Isolated environments, Docker stacks, and AI agent workflows — managed from a single keyboard-driven terminal interface.",
 
-  appearance: "dark",
+  base: "/git-grove/",
 
-  head: [["link", { rel: "icon", href: "/favicon.ico" }]],
+  appearance: "dark",
 
   themeConfig: {
     siteTitle: "Grove",

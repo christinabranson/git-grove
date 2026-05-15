@@ -238,8 +238,6 @@ Run `grove` with no arguments to open the interactive interface:
 [ l ] launch agent  [ o ] open  [ u ] docker up  [ d ] down  [ s ] sync  [ ? ] help
 ```
 
-<!-- TODO: add terminal demo gif -->
-
 | Key       | Action                                       |
 | --------- | -------------------------------------------- |
 | `↑` / `k` | Move up                                      |

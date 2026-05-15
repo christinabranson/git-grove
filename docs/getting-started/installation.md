@@ -43,24 +43,26 @@ Grove creates per-worktree files that should never be committed. Add them to you
 git config --global core.excludesfile
 
 # Add the grove entries
-echo '.grove/' >> ~/.gitignore_global
 echo '.env.worktree' >> ~/.gitignore_global
+echo '.worktree-manifest.json' >> ~/.gitignore_global
 ```
 
 If you haven't set one up yet:
 
 ```bash
-echo '.grove/' >> ~/.gitignore_global
 echo '.env.worktree' >> ~/.gitignore_global
+echo '.worktree-manifest.json' >> ~/.gitignore_global
 git config --global core.excludesfile ~/.gitignore_global
 ```
 
-| File / Dir      | What it is                                        |
-| --------------- | ------------------------------------------------- |
-| `.grove/`       | Per-worktree metadata (base branch, local config) |
-| `.env.worktree` | Port assignments and Compose project name         |
+| File                      | What it is                                             |
+| ------------------------- | ------------------------------------------------------ |
+| `.env.worktree`           | Port assignments and Compose project name (per branch) |
+| `.worktree-manifest.json` | Agent status file written at runtime                   |
 
-These are machine-local — committing them would break other developers' environments.
+These are machine-local and per-session — committing them would break other developers' environments.
+
+> **Note:** `.grove/config.json` is different — it describes how the project works and **should** be committed. Only the runtime state files above need to stay out of git.
 
 ## Editor detection
 
