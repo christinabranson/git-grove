@@ -34,6 +34,7 @@ import {
   readEnvFile,
   readSourceEnvFiles,
   resolveContractEnvVars,
+  selectCanonicalEnvForOutput,
   renderEnvContent,
 } from "./providers/docker-compose-contract.js";
 import type { PresetName } from "./setup/presets.js";
@@ -288,6 +289,11 @@ program
               sourceEnv,
               groveConfig.envContract,
             );
+            const renderedCanonicalEnv = selectCanonicalEnvForOutput(
+              contract,
+              canonicalEnv,
+              groveConfig.envContract,
+            );
             const envErrors = contractEnv.issues.filter(
               (issue) => issue.severity === "error",
             );
@@ -304,7 +310,7 @@ program
               );
             }
             const envContent = renderEnvContent(
-              canonicalEnv,
+              renderedCanonicalEnv,
               contractEnv.values,
             );
             await writeFile(envAgentPath, envContent, "utf-8");

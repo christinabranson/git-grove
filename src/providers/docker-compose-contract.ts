@@ -637,6 +637,57 @@ export function resolveContractEnvVars(
   };
 }
 
+type CanonicalOutputPolicyContext = {
+  key: string;
+  contract: ComposeContract;
+  envContract?: GroveEnvContract;
+};
+
+type CanonicalOutputPolicy = (ctx: CanonicalOutputPolicyContext) => boolean;
+
+function hasExplicitCanonicalPolicy(
+  key: string,
+  envContract?: GroveEnvContract,
+): boolean {
+  return Boolean(
+    envContract?.required?.includes(key) ||
+    envContract?.managed?.includes(key) ||
+    (envContract?.derived !== undefined && key in envContract.derived),
+  );
+}
+
+const CANONICAL_OUTPUT_POLICIES: Record<string, CanonicalOutputPolicy> = {
+  // DB schema is useful for derived values, but we only emit it when compose
+  // or explicit envContract rules require it in the output file.
+  DB_SCHEMA: ({ key, contract, envContract }) =>
+    contract.expectedVars.includes(key) ||
+    hasExplicitCanonicalPolicy(key, envContract),
+};
+
+function shouldEmitCanonicalKey(
+  key: string,
+  contract: ComposeContract,
+  envContract?: GroveEnvContract,
+): boolean {
+  const policy = CANONICAL_OUTPUT_POLICIES[key];
+  if (!policy) return true;
+  return policy({ key, contract, envContract });
+}
+
+export function selectCanonicalEnvForOutput(
+  contract: ComposeContract,
+  canonicalValues: Record<string, string>,
+  envContract?: GroveEnvContract,
+): Record<string, string> {
+  const selected: Record<string, string> = {};
+  for (const [key, value] of Object.entries(canonicalValues)) {
+    if (shouldEmitCanonicalKey(key, contract, envContract)) {
+      selected[key] = value;
+    }
+  }
+  return selected;
+}
+
 export function renderEnvContent(
   canonicalValues: Record<string, string>,
   aliasValues: Record<string, string>,
