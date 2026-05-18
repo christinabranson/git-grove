@@ -19,8 +19,7 @@
 Grove wraps git worktrees in a keyboard-driven terminal interface — giving each branch its own isolated environment, Docker stack, and port assignments. Run multiple AI agents, review PRs, and juggle features in parallel without switching branches or fighting port conflicts.
 
 ```bash
-git clone https://github.com/christinabranson/git-grove.git
-cd git-grove && npm install && npm run build && npm link
+npm install -g @gitgrove/cli@alpha
 
 grove        # open TUI in any repo with worktrees
 ```
@@ -91,16 +90,10 @@ Grove solves this with a layer on top of standard git and Docker primitives:
 
 **1. Install**
 
-Node 18+ required. Grove is installed from source:
+Node 18+ required.
 
 ```bash
-git clone https://github.com/christinabranson/git-grove.git
-cd git-grove && npm install && npm run build && npm link
-```
-
-Verify:
-
-```bash
+npm install -g @gitgrove/cli@alpha
 grove --version
 ```
 
