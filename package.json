@@ -3,7 +3,7 @@
   "version": "0.1.0-alpha.1.1",
   "description": "Terminal-based worktree manager for git repositories",
   "bin": {
-    "grove": "./dist/index.js"
+    "grove": "./dist/cli.js"
   },
   "files": [
     "dist",
