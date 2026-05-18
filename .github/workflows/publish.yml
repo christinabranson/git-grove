@@ -38,12 +38,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump prerelease version
+      - name: Bump prerelease version and tag
         run: |
-          npm version prerelease --preid alpha -m "chore: bump version to %s"
+          CURRENT=$(npm view @gitgrove/cli dist-tags.alpha 2>/dev/null || node -p "require('./package.json').version")
+          npm version "$CURRENT" --no-git-tag-version --allow-same-version
+          npm version prerelease --preid alpha --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          git tag "v$VERSION"
 
-      - name: Push version commit and tag
-        run: git push --follow-tags
+      - name: Push tag
+        run: git push --tags
 
       - name: Publish to npm
         run: npm publish --provenance
