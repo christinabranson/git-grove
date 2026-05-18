@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const EXAMPLES_DIR = path.join(PROJECT_ROOT, "examples");
-export const CLI_BIN = path.join(PROJECT_ROOT, "dist", "index.js");
+export const CLI_BIN = path.join(PROJECT_ROOT, "dist", "cli.js");
 
 export interface TempRepo {
   repoPath: string;
