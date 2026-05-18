@@ -1,6 +1,6 @@
 {
   "name": "@gitgrove/cli",
-  "version": "0.1.0-alpha.1.1",
+  "version": "0.1.0-alpha.1.2",
   "description": "Terminal-based worktree manager for git repositories",
   "bin": {
     "grove": "./dist/index.js"
