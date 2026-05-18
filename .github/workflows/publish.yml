@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -40,7 +41,11 @@ jobs:
 
       - name: Bump prerelease version and tag
         run: |
-          CURRENT=$(npm view @gitgrove/cli dist-tags.alpha 2>/dev/null || node -p "require('./package.json').version")
+          LATEST_TAG=$(git tag -l "v*-alpha*" | sort -V | tail -1)
+          CURRENT=${LATEST_TAG#v}
+          if [ -z "$CURRENT" ]; then
+            CURRENT=$(node -p "require('./package.json').version")
+          fi
           npm version "$CURRENT" --no-git-tag-version --allow-same-version
           npm version prerelease --preid alpha --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
