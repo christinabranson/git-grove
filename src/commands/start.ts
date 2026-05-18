@@ -15,7 +15,6 @@ import {
   resolveSharedStack,
   getSharedStackState,
   sharedUp,
-  sharedDown as _sharedDown,
   DEFAULT_SHARED_COMPOSE_FILE,
 } from "../providers/shared.js";
 import {

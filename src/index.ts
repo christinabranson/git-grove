@@ -133,8 +133,7 @@ program
           if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
           if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
           console.log(`  source: ${groveEnv.metadata.source}`);
-          const branch = /^\d+$/.test(target) ? target : target;
-          console.log(`✓ Ready: ${branch}`);
+          console.log(`✓ Ready: ${groveEnv.name}`);
         }
       } catch (err) {
         if (opts.json) {
