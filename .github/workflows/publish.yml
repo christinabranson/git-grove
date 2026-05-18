@@ -41,7 +41,7 @@ jobs:
 
       - name: Bump prerelease version and tag
         run: |
-          LATEST_TAG=$(git tag -l "v*-alpha*" | sort -V | tail -1)
+          LATEST_TAG=$(git tag --merged HEAD -l "v*-alpha*" | sort -V | tail -1)
           CURRENT=${LATEST_TAG#v}
           if [ -z "$CURRENT" ]; then
             CURRENT=$(node -p "require('./package.json').version")
