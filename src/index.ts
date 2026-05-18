@@ -29,7 +29,10 @@ import { runDoctor, runDoctorEnv } from "./commands/doctor.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
 import type { PresetName } from "./setup/presets.js";
 
-const pkg = { name: "grove-wt", version: "0.1.0" };
+const pkg = {
+  name: "@gitgrove/cli",
+  version: process.env.PKG_VERSION ?? "0.0.0",
+};
 
 program
   .name("grove")
