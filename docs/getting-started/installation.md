@@ -1,6 +1,6 @@
 # Installation
 
-Grove is a global Node.js CLI. It requires **Node 18+** and is installed from source.
+Grove is a global Node.js CLI. It requires **Node 18+** and is available on [npm](https://www.npmjs.com/package/@gitgrove/cli).
 
 ## Prerequisites
 
@@ -21,6 +21,20 @@ node --version   # must be 18+
 ## Install
 
 ```bash
+npm install -g @gitgrove/cli@alpha
+```
+
+Verify it worked:
+
+```bash
+grove --version
+```
+
+## Contributing / building from source
+
+If you want to contribute or run from source:
+
+```bash
 git clone https://github.com/christinabranson/git-grove.git
 cd git-grove
 npm install
@@ -28,11 +42,7 @@ npm run build
 npm link
 ```
 
-`npm link` makes the `grove` binary available globally. Verify it worked:
-
-```bash
-grove --version
-```
+`npm link` makes the `grove` binary available globally, pointing at your local build.
 
 ## Global gitignore
 
@@ -83,7 +93,7 @@ Grove auto-detects your editor for `grove open` — no config required. It check
 
 ### `grove: command not found`
 
-`npm link` puts the binary in npm's global bin directory. If that directory isn't in your `PATH`:
+`npm install -g` puts the binary in npm's global bin directory. If that directory isn't in your `PATH`:
 
 ```bash
 # Find where npm puts global binaries
@@ -117,16 +127,6 @@ git --version        # should be 2.5 or higher
 git worktree list    # should work without error
 ```
 
-### `npm run build` fails
-
-If the build step errors, check your Node version first:
-
-```bash
-node --version   # must be 18 or higher
-```
-
-If Node is too old, install a newer version via [nvm](https://github.com/nvm-sh/nvm) or your system package manager.
-
 ### `grove open` opens the wrong editor (or nothing)
 
 Grove auto-detects your editor in priority order: `.grove/config.json` → `$VISUAL` → `$EDITOR` → PATH scan → macOS app bundles.
@@ -146,9 +146,9 @@ Or configure it explicitly in `.grove/config.json`:
 { "editor": "code" }
 ```
 
-### Permission errors during `npm link`
+### Permission errors during `npm install -g`
 
-If you see `EACCES: permission denied` when running `npm link`:
+If you see `EACCES: permission denied`:
 
 ```bash
 # Option 1: fix npm's global directory permissions (recommended)

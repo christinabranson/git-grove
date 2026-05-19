@@ -5,8 +5,7 @@ This guide gets you from zero to a working Grove setup in under 5 minutes.
 ## 1. Install Grove
 
 ```bash
-git clone https://github.com/christinabranson/git-grove.git
-cd git-grove && npm install && npm run build && npm link
+npm install -g @gitgrove/cli@alpha
 ```
 
 Verify it worked:
