@@ -35,6 +35,9 @@ That's it for basic use. If you just want to manage worktrees without environmen
 # Create a new branch and check it out in a worktree
 grove start feat/my-feature --new
 
+# If your repo's default branch isn't main/master, specify a base:
+grove start feat/my-feature --new --base develop
+
 # Or check out an existing remote branch
 grove start feat/my-feature
 

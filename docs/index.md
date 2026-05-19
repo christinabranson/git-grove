@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "Grove"
+  name: "GitGrove"
   text: "See the forest.\nManage the trees."
-  tagline: Stop stashing. Stop context-switching. Work on multiple branches simultaneously — each with its own environment, ports, and editor window.
+  tagline: Manage parallel development workflows with isolated git worktrees, environments, and AI coding sessions.
   actions:
     - theme: brand
       text: Why GitGrove?
