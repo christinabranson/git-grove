@@ -9,20 +9,89 @@ git clone https://github.com/christinabranson/git-grove.git
 cd git-grove && npm install && npm run build && npm link
 ```
 
-## 2. Open any repo in Grove
+Verify it worked:
 
-Grove works in any git repository — no setup required for basic worktree visibility:
+```bash
+grove --version
+```
+
+> Having trouble? See the [Troubleshooting](/getting-started/installation#troubleshooting) section.
+
+## 2. Try it in any repo — no setup required
+
+Grove works in any git repository immediately, with no configuration:
 
 ```bash
 cd your-project
 grove
 ```
 
-The TUI opens and shows your worktrees. Use `↑`/`↓` to navigate, `q` to quit.
+The TUI opens and shows all your worktrees. Use `↑`/`↓` to navigate, `q` to quit.
 
-## 3. Initialize environment management (optional)
+That's it for basic use. If you just want to manage worktrees without environment isolation, you're done.
 
-If you want Grove to manage Docker Compose stacks or Node dev servers, run setup:
+## 3. Create your first worktree
+
+```bash
+# Create a new branch and check it out in a worktree
+grove start feat/my-feature --new
+
+# Or check out an existing remote branch
+grove start feat/my-feature
+
+# Or check out a PR by number (requires gh)
+grove start 1234
+```
+
+Grove creates a new directory alongside your repo:
+
+```
+~/repos/my-app/                        ← your main repo (untouched)
+~/repos/my-app-worktrees/
+  feat-my-feature/                     ← new worktree, checked out to feat/my-feature
+```
+
+Your main repo keeps running. Nothing is interrupted. You can now open the new folder in a second editor window and work on both branches simultaneously.
+
+## 4. Open in your editor
+
+```bash
+grove open feat/my-feature
+```
+
+Grove opens the worktree directory in VS Code, Cursor, or whatever editor is configured. You now have two independent editor windows — one per branch.
+
+## 5. See all your worktrees
+
+```bash
+grove status
+```
+
+Or open the TUI (`grove`) and navigate with:
+
+- `o` — open the selected worktree in your editor
+- `s` — sync (refresh git status, agent manifests, Docker state)
+- `n` — new worktree
+- `/` — filter by branch name
+- `?` — show all keyboard shortcuts
+
+## 6. Clean up when done
+
+```bash
+grove delete feat/my-feature
+```
+
+Grove confirms before deleting. To skip the prompt and also delete the local branch:
+
+```bash
+grove delete feat/my-feature --delete-branch --yes
+```
+
+---
+
+## Optional: environment isolation with Docker
+
+If your project uses Docker Compose or a Node dev server, Grove can automatically assign each worktree unique ports so environments never conflict.
 
 ```bash
 grove setup
@@ -30,69 +99,30 @@ grove setup
 
 Grove inspects your project and proposes a `.grove/config.json`. It detects Docker Compose files, Vite configs, and `package.json` scripts automatically. Review and confirm.
 
-## 4. Create your first worktree
-
-```bash
-# Check out an existing remote branch
-grove start feat/my-feature
-
-# Create a new branch off main
-grove start feat/my-feature --new
-
-# Check out a PR by number (requires gh)
-grove start 1234
-```
-
-Grove creates the worktree, then generates a `.env.worktree` file with unique values for this branch — a different port, Docker project name, and database schema from every other worktree. Your `docker-compose.yml` reads these variables, so each branch gets a completely isolated stack with no manual port tracking.
-
-Expected output for a Docker project:
+Then `grove start` does more:
 
 ```
 Creating worktree at ~/repos/my-app-worktrees/feat-my-feature…
 Generating .env.worktree from grove config…
-  aliases: none
   COMPOSE_PROJECT_NAME=my-app-feat-my-feature
   WEB_PORT=8081
   DB_PORT=5433
 Starting shared stack (my-app-shared)…
 ✓ Shared stack running
-Resolving environment provider…
-  → provider: docker-compose
+→ provider: docker-compose
 Starting environment…
   web: http://localhost:8081
-  source: grove
 ✓ Ready: feat/my-feature
 ```
 
-## 5. Use the TUI
+Each worktree gets its own ports — no manual tracking, no conflicts.
 
-```bash
-grove
-```
-
-From the TUI you can:
-
-- `o` — open the selected worktree in your editor
-- `u` / `d` — Docker up / down
-- `s` — sync (refresh git status, manifests, Docker state)
-- `n` — new worktree
-- `/` — filter by branch name or agent state
-- `?` — show all keyboard shortcuts
-
-## 6. CLI for scripting and agents
-
-All operations are also available as commands:
-
-```bash
-grove status                          # table of all worktrees
-grove status feat/my-feature --json   # machine-readable JSON
-grove open feat/my-feature            # open in editor
-grove stop feat/my-feature            # stop the environment
-grove delete feat/my-feature          # remove the worktree
-```
+---
 
 ## What's next?
 
-- [Core Concepts](/getting-started/concepts) — understand the mental model
-- [AI Workflows](/guides/ai-workflows) — running parallel AI agents
+- [Why GitGrove?](/getting-started/why) — understand the problem it solves
+- [Core Concepts](/getting-started/concepts) — worktrees, providers, manifests, and the glossary
+- [Common Workflows](/guides/workflows) — hotfixes, parallel PRs, AI agents
+- [AI Workflows](/guides/ai-workflows) — running parallel AI agents in isolation
 - [Docker Guide](/guides/docker) — shared infrastructure and env contracts

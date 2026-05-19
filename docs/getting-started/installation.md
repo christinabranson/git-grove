@@ -78,3 +78,94 @@ Grove auto-detects your editor for `grove open` — no config required. It check
 
 - [Quick Start](/getting-started/quickstart) — get to a working setup in 5 minutes
 - [Core Concepts](/getting-started/concepts) — understand worktrees, providers, and manifests
+
+## Troubleshooting
+
+### `grove: command not found`
+
+`npm link` puts the binary in npm's global bin directory. If that directory isn't in your `PATH`:
+
+```bash
+# Find where npm puts global binaries
+npm bin -g
+
+# Add it to your PATH (add this to ~/.zshrc or ~/.bashrc)
+export PATH="$(npm bin -g):$PATH"
+
+# Then reload your shell
+source ~/.zshrc   # or ~/.bashrc
+```
+
+### `git worktree: unknown command`
+
+Your Git version is too old. Grove requires Git 2.5+, which introduced worktree support.
+
+```bash
+git --version   # check your version
+
+# macOS: update via Homebrew
+brew install git
+
+# Ubuntu/Debian
+sudo apt-get install git
+```
+
+After updating, open a new terminal and verify:
+
+```bash
+git --version        # should be 2.5 or higher
+git worktree list    # should work without error
+```
+
+### `npm run build` fails
+
+If the build step errors, check your Node version first:
+
+```bash
+node --version   # must be 18 or higher
+```
+
+If Node is too old, install a newer version via [nvm](https://github.com/nvm-sh/nvm) or your system package manager.
+
+### `grove open` opens the wrong editor (or nothing)
+
+Grove auto-detects your editor in priority order: `.grove/config.json` → `$VISUAL` → `$EDITOR` → PATH scan → macOS app bundles.
+
+To force a specific editor, set `$VISUAL` in your shell profile:
+
+```bash
+# ~/.zshrc or ~/.bashrc
+export VISUAL="code"   # VS Code
+export VISUAL="cursor" # Cursor
+export VISUAL="vim"    # Vim
+```
+
+Or configure it explicitly in `.grove/config.json`:
+
+```json
+{ "editor": "code" }
+```
+
+### Permission errors during `npm link`
+
+If you see `EACCES: permission denied` when running `npm link`:
+
+```bash
+# Option 1: fix npm's global directory permissions (recommended)
+# See: https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally
+
+# Option 2: use a Node version manager (nvm/fnm) — avoids permission issues entirely
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 20
+nvm use 20
+```
+
+### VS Code opens a file instead of a folder
+
+`grove open` passes the worktree path to your editor. If VS Code opens a file picker instead of the folder, ensure the `code` CLI is installed:
+
+1. Open VS Code
+2. Open the Command Palette (`⌘⇧P` on macOS, `Ctrl⇧P` on Linux/Windows)
+3. Run: `Shell Command: Install 'code' command in PATH`
+
+Then `grove open` will open the worktree as a VS Code workspace.

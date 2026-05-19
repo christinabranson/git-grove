@@ -14,7 +14,7 @@ export default defineConfig({
     logo: null,
 
     nav: [
-      { text: "Guide", link: "/getting-started/installation" },
+      { text: "Guide", link: "/getting-started/why" },
       { text: "Commands", link: "/commands/init" },
       { text: "Examples", link: "/examples/docker" },
       {
@@ -27,6 +27,7 @@ export default defineConfig({
       {
         text: "Getting Started",
         items: [
+          { text: "Why GitGrove?", link: "/getting-started/why" },
           { text: "Installation", link: "/getting-started/installation" },
           { text: "Quick Start", link: "/getting-started/quickstart" },
           { text: "Core Concepts", link: "/getting-started/concepts" },
@@ -35,6 +36,7 @@ export default defineConfig({
       {
         text: "Guides",
         items: [
+          { text: "Common Workflows", link: "/guides/workflows" },
           { text: "AI Workflows", link: "/guides/ai-workflows" },
           { text: "Docker Compose", link: "/guides/docker" },
           { text: "Monorepos", link: "/guides/monorepos" },

@@ -4,11 +4,11 @@ layout: home
 hero:
   name: "Grove"
   text: "See the forest.\nManage the trees."
-  tagline: Mission control for parallel git worktrees. Isolated environments, Docker stacks, and AI agent workflows — from one keyboard-driven terminal.
+  tagline: Stop stashing. Stop context-switching. Work on multiple branches simultaneously — each with its own environment, ports, and editor window.
   actions:
     - theme: brand
-      text: Get Started
-      link: /getting-started/installation
+      text: Why GitGrove?
+      link: /getting-started/why
     - theme: alt
       text: Quick Start
       link: /getting-started/quickstart
@@ -17,16 +17,16 @@ hero:
       link: https://github.com/christinabranson/git-grove
 
 features:
-  - title: Isolated environments
-    details: "For each branch, Grove writes a `.env.worktree` file with unique values: a different port, a different Docker project name, a different schema. Your Compose file reads them — each branch gets its own stack. No coordination needed."
-  - title: AI agent-ready
-    details: Agents discover their environment via `grove status --json` and report status back via `.worktree-manifest.json`. Grove displays it live in the TUI.
+  - title: No more "let me stash this first"
+    details: Each branch lives in its own directory. Switch contexts in seconds — running servers, node_modules, and editor state stay exactly where you left them.
+  - title: AI agent-safe by default
+    details: Point an AI agent at a worktree and it cannot touch your other branches. Grove shows every agent's status in one place, so you always know what's running where.
   - title: Zero lock-in
-    details: Grove is a progressive enhancement on top of standard git and Docker. Remove it and everything still works — no custom abstractions to unlearn.
+    details: Grove wraps standard git worktrees. Remove it and everything still works — no custom abstractions to unlearn, no vendor lock-in.
   - title: One command to start
-    details: "`grove start feat/my-feature` creates the worktree, generates `.env.worktree` with unique ports, starts the shared stack, and boots the environment."
-  - title: Keyboard-driven TUI
-    details: See all worktrees, their environments, agent status, and change footprints at a glance. Navigate and manage without touching the CLI.
-  - title: Docker-first
-    details: Per-worktree Compose stacks with automatic project naming, shared infrastructure support, port allocation, and env contract validation.
+    details: "`grove start feat/my-feature` creates the worktree, assigns unique ports, and boots the environment. No manual port tracking."
+  - title: See everything at once
+    details: The TUI shows all your branches, their running environments, AI agent status, and change footprints — at a glance, from one terminal.
+  - title: Works with your stack
+    details: "Auto-detects Docker Compose, Vite, and Node. Per-worktree environment files with unique ports so your stacks never conflict."
 ---

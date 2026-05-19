@@ -2,6 +2,20 @@
 
 Understanding these four concepts is enough to use Grove effectively.
 
+## Glossary
+
+If any of these terms blur together, come back here.
+
+| Term           | Meaning                                                            |
+| -------------- | ------------------------------------------------------------------ |
+| **Repository** | Your Git project — the `.git` folder and everything it tracks      |
+| **Branch**     | A named line of development within a repository                    |
+| **Worktree**   | A separate folder on disk where a branch is checked out            |
+| **Grove**      | This tool — manages worktrees, environments, and agent visibility  |
+| **Provider**   | How Grove starts your dev environment (Docker, Node scripts, etc.) |
+| **Workspace**  | The actual checked-out folder for a worktree                       |
+| **Manifest**   | A JSON file an AI agent writes to report its status back to Grove  |
+
 ## Worktrees
 
 A **git worktree** is a separate directory where a git repository is checked out at a specific branch. Unlike `git checkout`, worktrees let you have multiple branches checked out simultaneously — each in its own directory, each independently editable.
@@ -84,3 +98,52 @@ Grove is a **progressive enhancement** — you adopt as much as you need:
 | 3     | Agent status display in TUI, machine-readable `grove status --json` | `.worktree-manifest.json` |
 
 Each level builds on the previous. Remove Grove and your project works exactly the same — there are no custom abstractions that need to stay in place.
+
+## Common mistakes
+
+**Deleting a worktree folder manually with `rm -rf`**
+
+This leaves stale metadata in `.git/worktrees/`. Fix it:
+
+```bash
+grove prune
+```
+
+Or use `grove delete <branch>` instead — it handles cleanup automatically.
+
+**Running commands in the wrong worktree**
+
+Each worktree is just a directory. Double-check your terminal's working directory before running migrations, tests, or destructive operations. `grove status` shows which branch each path maps to.
+
+**Assuming worktrees share uncommitted changes**
+
+They don't. Uncommitted changes live in the working directory of the worktree where you made them. Only committed changes are visible across worktrees.
+
+**Expecting `node_modules` to be shared**
+
+Each worktree has its own `node_modules`. If branches have different dependencies, you'll need to `npm install` in each worktree separately. This is intentional — it prevents dependency conflicts between branches.
+
+**Modifying the same file in two worktrees simultaneously**
+
+You can't check out the same branch in two worktrees. But if two worktrees are on different branches and both modify the same file, you'll get a conflict when you eventually merge — same as any branch workflow.
+
+## When Grove is overkill
+
+Grove is most useful when you're juggling multiple branches, PRs, or AI agents. You probably don't need it when:
+
+- You're making a small, self-contained change that doesn't require context-switching
+- You're new to Git and still building your mental model of branches and commits
+- Your project is tiny and you only ever work on one thing at a time
+
+When the stash-and-switch pain becomes real, Grove will be here.
+
+## Safety guarantees
+
+A few things Grove will never do:
+
+- Modify your main worktree without being told to
+- Delete a worktree without confirmation (unless `--yes` is passed)
+- Commit or push anything on your behalf
+- Share data between worktrees that shouldn't be shared
+
+Worktrees are a built-in Git primitive. Grove is a wrapper. If Grove had a bug and you deleted it, your worktrees would still exist and be accessible via standard `git worktree` commands.
