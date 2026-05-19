@@ -14,7 +14,7 @@
 
 > _See the forest. Manage the trees._
 
-[![CI](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml/badge.svg)](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/@gitgrove/cli/alpha?label=npm%20%40alpha)](https://www.npmjs.com/package/@gitgrove/cli)
+[![CI](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml/badge.svg)](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/@gitgrove/cli/alpha?label=npm%20%40alpha)](https://www.npmjs.com/package/@gitgrove/cli) [![docs](https://img.shields.io/badge/docs-christinabranson.github.io%2Fgit--grove-blue)](https://christinabranson.github.io/git-grove)
 
 **Mission control for parallel git worktrees.**
 
