@@ -56,6 +56,7 @@
     "type": "git",
     "url": "https://github.com/christinabranson/git-grove"
   },
+  "homepage": "https://christinabranson.github.io/git-grove",
   "engines": {
     "node": ">=18"
   },
