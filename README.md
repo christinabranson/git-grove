@@ -1,4 +1,4 @@
-# Grove
+# GitGrove
 
 ```
            ░██   ░██
@@ -13,6 +13,8 @@
 ```
 
 > _See the forest. Manage the trees._
+
+[![CI](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml/badge.svg)](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/@gitgrove/cli/alpha?label=npm%20%40alpha)](https://www.npmjs.com/package/@gitgrove/cli)
 
 **Mission control for parallel git worktrees.**
 
@@ -318,9 +320,11 @@ grove info                                 # show resolved configuration
 
 ## Documentation
 
-- [Getting Started](https://christinabranson.github.io/git-grove/getting-started/installation)
+- [Why GitGrove?](https://christinabranson.github.io/git-grove/getting-started/why)
+- [Installation](https://christinabranson.github.io/git-grove/getting-started/installation)
 - [Quick Start](https://christinabranson.github.io/git-grove/getting-started/quickstart)
 - [Core Concepts](https://christinabranson.github.io/git-grove/getting-started/concepts)
+- [Common Workflows](https://christinabranson.github.io/git-grove/guides/workflows)
 - [AI Workflow Guide](https://christinabranson.github.io/git-grove/guides/ai-workflows)
 - [Docker Guide](https://christinabranson.github.io/git-grove/guides/docker)
 - [Command Reference](https://christinabranson.github.io/git-grove/commands/init)

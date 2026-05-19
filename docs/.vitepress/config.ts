@@ -1,20 +1,20 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "Grove",
+  title: "GitGrove",
   description:
-    "Mission control for parallel git worktrees. Isolated environments, Docker stacks, and AI agent workflows — managed from a single keyboard-driven terminal interface.",
+    "Manage parallel development workflows with isolated git worktrees, environments, and AI coding sessions.",
 
   base: "/git-grove/",
 
   appearance: "dark",
 
   themeConfig: {
-    siteTitle: "Grove",
+    siteTitle: "GitGrove",
     logo: null,
 
     nav: [
-      { text: "Guide", link: "/getting-started/installation" },
+      { text: "Guide", link: "/getting-started/why" },
       { text: "Commands", link: "/commands/init" },
       { text: "Examples", link: "/examples/docker" },
       {
@@ -27,6 +27,7 @@ export default defineConfig({
       {
         text: "Getting Started",
         items: [
+          { text: "Why GitGrove?", link: "/getting-started/why" },
           { text: "Installation", link: "/getting-started/installation" },
           { text: "Quick Start", link: "/getting-started/quickstart" },
           { text: "Core Concepts", link: "/getting-started/concepts" },
@@ -35,6 +36,7 @@ export default defineConfig({
       {
         text: "Guides",
         items: [
+          { text: "Common Workflows", link: "/guides/workflows" },
           { text: "AI Workflows", link: "/guides/ai-workflows" },
           { text: "Docker Compose", link: "/guides/docker" },
           { text: "Monorepos", link: "/guides/monorepos" },
@@ -73,7 +75,7 @@ export default defineConfig({
 
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Grove — See the forest. Manage the trees.",
+      copyright: "GitGrove — See the forest. Manage the trees.",
     },
 
     editLink: {
