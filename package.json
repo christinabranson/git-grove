@@ -52,6 +52,10 @@
     "vitest": "^2.1.9"
   },
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/christinabranson/git-grove"
+  },
   "engines": {
     "node": ">=18"
   },
