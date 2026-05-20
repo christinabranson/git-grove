@@ -444,7 +444,7 @@ export async function readEnvFile(
 
 export async function readSourceEnvFiles(
   worktreePath: string,
-  fileNames: string[] = [".env"],
+  fileNames: string[] = [".env", ".env.example"],
 ): Promise<Record<string, string>> {
   const merged: Record<string, string> = {};
   for (const fileName of fileNames) {
@@ -573,7 +573,7 @@ export function resolveContractEnvVars(
       severity: required.has(variable) || strict ? "error" : "warning",
       message: `Passthrough env var not found in source env: ${variable}`,
       details:
-        "Ensure the variable exists in .env, .env.worktree, or envContract.sourceEnvFiles.",
+        "Ensure the variable exists in .env, .env.example, or envContract.sourceEnvFiles.",
     });
   }
 

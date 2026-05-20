@@ -100,6 +100,49 @@ describe("NodeScriptsProvider.start()", () => {
     const env = await provider.start();
     expect(env.web?.port).toBe(5173);
   });
+
+  test("passes merged startup env with shell precedence", async () => {
+    const originalFoo = process.env.FOO;
+    try {
+      process.env.FOO = "shell";
+
+      mockedReadFile.mockImplementation((filePath) => {
+        const file = String(filePath);
+        if (file.endsWith("package.json")) {
+          return Promise.resolve(makePkg({ dev: "vite" })) as never;
+        }
+        if (file.endsWith(".env.example")) {
+          return Promise.resolve("FOO=example\nFROM_EXAMPLE=yes\n") as never;
+        }
+        if (file.endsWith(".env.worktree")) {
+          return Promise.resolve("FOO=worktree\nFROM_WORKTREE=yes\n") as never;
+        }
+        if (file.endsWith(".env")) {
+          return Promise.resolve("FOO=user\nFROM_ENV=yes\n") as never;
+        }
+        return Promise.resolve("") as never;
+      });
+
+      const provider = new NodeScriptsProvider("/worktree", "feature", "dev");
+      await provider.start();
+
+      expect(mockedExeca).toHaveBeenCalledWith(
+        "npm",
+        ["run", "dev"],
+        expect.objectContaining({
+          env: expect.objectContaining({
+            FOO: "shell",
+            FROM_EXAMPLE: "yes",
+            FROM_ENV: "yes",
+            FROM_WORKTREE: "yes",
+          }),
+        }),
+      );
+    } finally {
+      if (originalFoo === undefined) delete process.env.FOO;
+      else process.env.FOO = originalFoo;
+    }
+  });
 });
 
 describe("NodeScriptsProvider.stop()", () => {

@@ -12,10 +12,11 @@ grove start <branch|PR#> [options]
 
 1. Resolves the target (branch name or PR number → branch)
 2. Creates the worktree at the configured root, or attaches to an existing one
-3. Generates `.env.worktree` from naming templates in `.grove/config.json`
-4. Starts the shared infrastructure stack if configured and not already running
-5. Discovers the environment provider and starts it
-6. Prints the environment URLs (or JSON if `--json`)
+3. Bootstraps `.env` from `.env.example` when `.env` is missing
+4. Generates or refreshes `.env.worktree` from naming templates in `.grove/config.json`
+5. Starts the shared infrastructure stack if configured and not already running
+6. Discovers the environment provider and starts it
+7. Prints the environment URLs (or JSON if `--json`)
 
 ## Usage
 
@@ -103,7 +104,10 @@ Or set `GROVE_WORKTREE_ROOT=/your/path` as an environment variable.
 
 ## .env.worktree generation
 
-If `.grove/config.json` has a `naming` section, Grove generates `.env.worktree` automatically on `grove start`. If the file already exists, Grove skips generation unless `--refresh-env` is passed.
+If `.grove/config.json` has a `naming` section, Grove refreshes `.env.worktree` on every `grove start` so branch-specific values stay current.
+
+Grove treats `.env` as user-owned: if `.env` is missing and `.env.example` exists,
+it copies `.env.example` to `.env` once and never overwrites `.env` afterwards.
 
 Generated file example:
 

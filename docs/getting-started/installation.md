@@ -53,6 +53,7 @@ Grove creates per-worktree files that should never be committed. Add them to you
 git config --global core.excludesfile
 
 # Add the grove entries
+echo '.env' >> ~/.gitignore_global
 echo '.env.worktree' >> ~/.gitignore_global
 echo '.worktree-manifest.json' >> ~/.gitignore_global
 echo '.grove/meta.json' >> ~/.gitignore_global
@@ -61,6 +62,7 @@ echo '.grove/meta.json' >> ~/.gitignore_global
 If you haven't set one up yet:
 
 ```bash
+echo '.env' >> ~/.gitignore_global
 echo '.env.worktree' >> ~/.gitignore_global
 echo '.worktree-manifest.json' >> ~/.gitignore_global
 echo '.grove/meta.json' >> ~/.gitignore_global
@@ -69,6 +71,7 @@ git config --global core.excludesfile ~/.gitignore_global
 
 | File                      | What it is                                                 |
 | ------------------------- | ---------------------------------------------------------- |
+| `.env`                    | User-owned local defaults and secrets (persistent)         |
 | `.env.worktree`           | Port assignments and Compose project name (per branch)     |
 | `.worktree-manifest.json` | Agent status file written at runtime                       |
 | `.grove/meta.json`        | Base branch recorded when creating a worktree with `--new` |

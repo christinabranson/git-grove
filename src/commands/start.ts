@@ -26,6 +26,7 @@ import {
   renderEnvContent,
 } from "../providers/docker-compose-contract.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
+import { bootstrapUserEnvFile } from "../utils/envFiles.js";
 import type { GroveEnvironment } from "../types.js";
 
 export interface StartOptions {
@@ -86,16 +87,22 @@ export async function runStart(
     console.log(`Attaching to existing worktree at ${worktreePath}…`);
   }
 
-  // 2. Generate .env.worktree from grove config naming templates
+  // 2. Ensure a user-owned .env exists (bootstrap once from .env.example).
+  const bootstrappedUserEnv = await bootstrapUserEnvFile(worktreePath);
+  if (bootstrappedUserEnv && !opts.json) {
+    console.log("Bootstrapped .env from .env.example");
+  }
+
+  // 3. Generate or refresh .env.worktree from grove config naming templates
   const envAgentPath = path.join(worktreePath, ".env.worktree");
   const groveConfig =
     (await loadGroveConfig(worktreePath)) ?? (await loadGroveConfig(repoPath));
-  const shouldGenerateEnv = !existsSync(envAgentPath) || opts.refreshEnv;
+  const shouldGenerateEnv = Boolean(groveConfig);
   if (shouldGenerateEnv && groveConfig) {
     if (!opts.json) {
       console.log(
-        opts.refreshEnv
-          ? "Regenerating .env.worktree from grove config…"
+        existsSync(envAgentPath)
+          ? "Refreshing .env.worktree from grove config…"
           : "Generating .env.worktree from grove config…",
       );
     }
@@ -106,13 +113,10 @@ export async function runStart(
     const expanded = expandNaming(groveConfig, branch);
     const canonicalEnv = await buildCanonicalEnvVars(expanded, existingWebPort);
     const contract = await discoverComposeContract(worktreePath);
-    const sourceEnv = {
-      ...(await readSourceEnvFiles(
-        worktreePath,
-        groveConfig.envContract?.sourceEnvFiles ?? [".env"],
-      )),
-      ...existingEnv,
-    };
+    const sourceEnv = await readSourceEnvFiles(
+      worktreePath,
+      groveConfig.envContract?.sourceEnvFiles ?? [".env", ".env.example"],
+    );
     const contractEnv = resolveContractEnvVars(
       contract,
       canonicalEnv,
@@ -168,12 +172,7 @@ export async function runStart(
         if (issue.details) console.log(chalk.gray(`    ${issue.details}`));
       }
     }
-  } else if (
-    shouldGenerateEnv &&
-    !groveConfig &&
-    !opts.json &&
-    opts.refreshEnv
-  ) {
+  } else if (!groveConfig && !opts.json && opts.refreshEnv) {
     console.log(
       chalk.yellow(
         "  warning: --refresh-env requested but no .grove/config.json was found",
@@ -181,7 +180,7 @@ export async function runStart(
     );
   }
 
-  // 3. Ensure shared stack is running (if configured)
+  // 4. Ensure shared stack is running (if configured)
   const sharedInfo = resolveSharedStack(repoPath, groveConfig);
   if (sharedInfo) {
     const sharedState = await getSharedStackState(sharedInfo);
@@ -206,7 +205,7 @@ export async function runStart(
     }
   }
 
-  // 4. Discover and start provider
+  // 5. Discover and start provider
   if (!opts.json) console.log("Resolving environment provider…");
   const provider = await discoverProvider(worktreePath, branch);
   if (!opts.json) console.log(`  → provider: ${provider.name}`);

@@ -1,8 +1,24 @@
 #!/usr/bin/env bash
-# Grove invokes this script with all .env.worktree variables already present in
-# the environment, plus GROVE_ENV_FILE pointing at the file itself so you can
-# pass it to docker compose with --env-file.
 set -euo pipefail
+
+# Ensure base local env exists.
+if [ ! -f .env ] && [ -f .env.example ]; then
+  cp .env.example .env
+fi
+
+# Grove should have generated this during `grove start`.
+if [ ! -f .env.worktree ]; then
+  echo "Missing .env.worktree. Run through grove start." >&2
+  exit 1
+fi
+
+# Precedence: shell > .env.worktree > .env > .env.example
+set -a
+[ -f .env ] && . ./.env
+. ./.env.worktree
+set +a
+
+GROVE_ENV_FILE="${GROVE_ENV_FILE:-.env.worktree}"
 
 COMPOSE_FLAGS=(-p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE")
 

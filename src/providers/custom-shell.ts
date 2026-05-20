@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import path from "path";
 import type { GroveProvider } from "./types.js";
 import type { GroveEnvironment } from "../types.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 interface EnvWorktreeVars {
   projectName: string;
@@ -100,13 +101,16 @@ export class CustomShellProvider implements GroveProvider {
       throw new Error(`Custom start script not found: ${scriptPath}`);
     }
 
-    const { raw, typed } = await parseEnvWorktree(this.worktreePath);
+    const startupEnv = await buildStartupEnvironment(this.worktreePath);
+    if (Object.keys(startupEnv.envWorktree).length === 0) {
+      throw new Error("Missing .env.worktree. Run through grove start.");
+    }
+    const { typed } = await parseEnvWorktree(this.worktreePath);
 
-    // Make the .env.worktree path available so the script can pass it to
-    // docker compose (e.g. docker compose --env-file "$GROVE_ENV_FILE" up)
+    // Keep shell values highest precedence while still providing .env, .env.example,
+    // and .env.worktree values to script runtimes that do not self-source files.
     const envForScript: Record<string, string> = {
-      ...(process.env as Record<string, string>),
-      ...raw,
+      ...startupEnv.merged,
       GROVE_ENV_FILE: path.join(this.worktreePath, ".env.worktree"),
     };
 
@@ -120,7 +124,8 @@ export class CustomShellProvider implements GroveProvider {
   }
 
   async stop(): Promise<void> {
-    const { raw, typed } = await parseEnvWorktree(this.worktreePath);
+    const { typed } = await parseEnvWorktree(this.worktreePath);
+    const startupEnv = await buildStartupEnvironment(this.worktreePath);
 
     if (this.stopScript) {
       const stopPath = this.resolveScript(this.stopScript, "stopScript");
@@ -129,8 +134,7 @@ export class CustomShellProvider implements GroveProvider {
       }
 
       const envForScript: Record<string, string> = {
-        ...(process.env as Record<string, string>),
-        ...raw,
+        ...startupEnv.merged,
         GROVE_ENV_FILE: path.join(this.worktreePath, ".env.worktree"),
       };
 

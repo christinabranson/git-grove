@@ -85,6 +85,11 @@ grove setup --refresh-env          # regenerate .env.worktree in current worktre
 
 ## The generated config
 
-`.grove/config.json` can be committed — it describes how the project works, not per-worktree state. The per-worktree state lives in `.env.worktree` (gitignored).
+`.grove/config.json` can be committed — it describes how the project works, not per-worktree state. Runtime env files should be gitignored:
+
+```gitignore
+.env
+.env.worktree
+```
 
 See the [Docker guide](/guides/docker) for a full breakdown of config options including `envContract`, `sharedComposeFile`, and naming templates.

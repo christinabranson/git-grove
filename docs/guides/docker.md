@@ -9,9 +9,10 @@ Grove reads `.env.worktree` to discover the Compose project name and port bindin
 When you run `grove start`, Grove:
 
 1. Creates the worktree directory
-2. Generates `.env.worktree` from naming templates (if `.grove/config.json` exists)
-3. Starts the shared infrastructure stack (if configured)
-4. Runs `docker compose up -d --build` for the worktree
+2. Bootstraps `.env` from `.env.example` when `.env` is missing
+3. Generates or refreshes `.env.worktree` from naming templates (if `.grove/config.json` exists)
+4. Starts the shared infrastructure stack (if configured)
+5. Runs `docker compose up -d --build` for the worktree
 
 ## Setup
 
@@ -167,11 +168,11 @@ For projects with secrets or derived env vars, configure `envContract` in `.grov
 }
 ```
 
-| Class         | Behavior                                                   |
-| ------------- | ---------------------------------------------------------- |
-| `passthrough` | Copied from source env files (`.env`) into `.env.worktree` |
-| `derived`     | Rendered from explicit templates — never guessed           |
-| `required`    | Must be present after rendering — fails fast if missing    |
+| Class         | Behavior                                                                              |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `passthrough` | Copied from source env files (`.env`, `.env.example` by default) into `.env.worktree` |
+| `derived`     | Rendered from explicit templates — never guessed                                      |
+| `required`    | Must be present after rendering — fails fast if missing                               |
 
 ## Diagnostics
 
@@ -195,9 +196,11 @@ Sometimes `docker compose up` is not enough. If your startup sequence needs step
 
 Grove still generates `.env.worktree` exactly as it would for a `docker-compose` project. Instead of calling `docker compose up` itself, it:
 
-1. Parses `.env.worktree` and injects every variable into the script's environment.
-2. Sets `GROVE_ENV_FILE=<worktree-path>/.env.worktree` so the script can forward the file to `docker compose --env-file "$GROVE_ENV_FILE"`.
-3. Runs your script with `cwd` set to the worktree root.
+1. Bootstraps `.env` from `.env.example` when `.env` is missing.
+2. Generates or refreshes `.env.worktree` with Grove-owned values.
+3. Invokes your script with env precedence: shell env > `.env.worktree` > `.env` > `.env.example`.
+4. Sets `GROVE_ENV_FILE=<worktree-path>/.env.worktree` so the script can forward the file to `docker compose --env-file "$GROVE_ENV_FILE"`.
+5. Runs your script with `cwd` set to the worktree root.
 
 Your script is responsible for the actual `docker compose up` call and any surrounding logic.
 
@@ -233,11 +236,30 @@ Your script is responsible for the actual `docker compose up` call and any surro
 
 ### Writing the script
 
-All `.env.worktree` variables are already in the environment when the script runs. You do not need to `source` the file — though you can pass it to `docker compose` via `$GROVE_ENV_FILE`:
+Use this baseline for startup scripts to keep ownership and precedence explicit:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Ensure base local env exists.
+if [ ! -f .env ] && [ -f .env.example ]; then
+  cp .env.example .env
+fi
+
+# Grove should have generated this.
+if [ ! -f .env.worktree ]; then
+  echo "Missing .env.worktree. Run through grove start." >&2
+  exit 1
+fi
+
+# Precedence: shell env > .env.worktree > .env > .env.example
+set -a
+[ -f .env ] && . ./.env
+. ./.env.worktree
+set +a
+
+GROVE_ENV_FILE="${GROVE_ENV_FILE:-.env.worktree}"
 
 COMPOSE_FLAGS=(-p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE")
 
@@ -258,7 +280,7 @@ docker compose "${COMPOSE_FLAGS[@]}" up -d --build web
 echo "Ready at http://localhost:${WEB_PORT}"
 ```
 
-Variables always available in the script:
+Variables available in the script (from merged env files and shell):
 
 | Variable               | Example value                                   |
 | ---------------------- | ----------------------------------------------- |

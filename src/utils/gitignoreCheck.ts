@@ -4,6 +4,7 @@ import path from "path";
 import chalk from "chalk";
 
 const SHOULD_BE_GITIGNORED = [
+  ".env",
   ".env.worktree",
   ".worktree-manifest.json",
   ".grove/meta.json",
