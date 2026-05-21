@@ -182,14 +182,30 @@ function inferStartPort(
 }
 
 /**
+ * Extract port variable values (keys ending in _PORT) from a parsed env record.
+ * Used to lock existing allocations when doing an additive refresh.
+ */
+export function extractPortsFromEnv(
+  env: Record<string, string>,
+): Record<string, number> {
+  const ports: Record<string, number> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (key.endsWith("_PORT") && /^\d+$/.test(value)) {
+      ports[key] = parseInt(value, 10);
+    }
+  }
+  return ports;
+}
+
+/**
  * Build a .env.worktree file body from expanded naming values.
  * The caller is responsible for writing it to disk.
  */
 export async function buildEnvAgent(
   expanded: ExpandedNaming,
-  existingWebPort?: number,
+  existingPorts?: Record<string, number>,
 ): Promise<string> {
-  const envVars = await buildCanonicalEnvVars(expanded, existingWebPort);
+  const envVars = await buildCanonicalEnvVars(expanded, existingPorts);
   const lines = Object.entries(envVars)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`);
@@ -199,7 +215,7 @@ export async function buildEnvAgent(
 
 export async function buildCanonicalEnvVars(
   expanded: ExpandedNaming,
-  existingWebPort?: number,
+  existingPorts?: Record<string, number>,
 ): Promise<Record<string, string>> {
   const portSpecs: Record<string, number | "auto"> = {
     ...expanded.ports,
@@ -214,6 +230,16 @@ export async function buildCanonicalEnvVars(
   const resolvedPorts: Record<string, number> = {};
 
   for (const [key, value] of Object.entries(portSpecs)) {
+    // Locked: existing .env.worktree had this port — preserve it unconditionally.
+    // Running containers for this worktree may already hold the port, so we do
+    // not check against dockerReserved here.
+    const locked = existingPorts?.[key];
+    if (locked !== undefined) {
+      reserved.add(locked);
+      resolvedPorts[key] = locked;
+      continue;
+    }
+
     if (typeof value === "number") {
       const duplicateKey = configuredByPort.get(value);
       if (duplicateKey) {
@@ -232,10 +258,7 @@ export async function buildCanonicalEnvVars(
       continue;
     }
 
-    const start =
-      key === "WEB_PORT"
-        ? (existingWebPort ?? DEFAULT_PORT_STARTS.WEB_PORT)
-        : inferStartPort(key, resolvedPorts);
+    const start = inferStartPort(key, resolvedPorts);
     const resolved = await findFreePortWithReserved(start, reserved);
     reserved.add(resolved);
     resolvedPorts[key] = resolved;

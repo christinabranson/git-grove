@@ -269,14 +269,14 @@ describe("PR number resolution", () => {
 // --- .env.worktree generation ---
 
 describe(".env.worktree generation", () => {
-  test("refreshes .env.worktree when config exists", async () => {
+  test("skips .env.worktree write when file exists and no --refresh-env", async () => {
     vi.mocked(loadGroveConfig).mockResolvedValue(fakeGroveConfig);
     mockedExistsSync.mockReturnValue(true); // both worktree and .env.worktree exist
     await runStart("/repo", "feature", { json: true });
-    expect(mockedWriteFile).toHaveBeenCalledWith(
+    expect(mockedWriteFile).not.toHaveBeenCalledWith(
       expect.stringContaining(".env.worktree"),
-      "WEB_PORT=3001\n",
-      "utf-8",
+      expect.anything(),
+      expect.anything(),
     );
   });
 

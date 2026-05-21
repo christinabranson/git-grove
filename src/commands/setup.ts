@@ -6,7 +6,11 @@ import { presets, recommendPreset, type PresetName } from "../setup/presets.js";
 import type { GroveConfig } from "../types.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
-import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
+import {
+  expandNaming,
+  buildCanonicalEnvVars,
+  extractPortsFromEnv,
+} from "../setup/naming.js";
 import { detectDefaultBranch } from "../data/worktrees.js";
 import { execa } from "execa";
 import { saveUserRepoConfig, loadUserRepoConfig } from "../data/userConfig.js";
@@ -134,11 +138,9 @@ async function regenerateEnvFromConfig(
   debugLog(debug, `branch resolved as: ${branch}`);
 
   const existingEnv = await readEnvFile(repoPath);
-  const existingWebPort = /^\d+$/.test(existingEnv["WEB_PORT"] ?? "")
-    ? Number.parseInt(existingEnv["WEB_PORT"], 10)
-    : undefined;
+  const existingPorts = extractPortsFromEnv(existingEnv);
   const expanded = expandNaming(config, branch);
-  const canonicalEnv = await buildCanonicalEnvVars(expanded, existingWebPort);
+  const canonicalEnv = await buildCanonicalEnvVars(expanded, existingPorts);
   const contract = await discoverComposeContract(repoPath);
   const sourceEnv = await readSourceEnvFiles(
     repoPath,

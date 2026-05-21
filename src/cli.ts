@@ -199,24 +199,36 @@ program
   .description(
     "Start the environment for a worktree (default: current worktree)",
   )
+  .option(
+    "--refresh-env",
+    "Additively refresh .env.worktree (preserves existing ports, allocates new ones)",
+  )
   .option("--json", "Output machine-readable JSON")
-  .action(async (branch: string | undefined, opts: { json?: boolean }) => {
-    try {
-      const repoPath = await detectRepoRoot();
-      const target = branch ?? (await detectCurrentBranch());
-      const groveEnv = await runStart(repoPath, target, { json: opts.json });
-      if (opts.json) {
-        console.log(JSON.stringify(groveEnv, null, 2));
-      } else {
-        if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
-        if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
-        console.log(`✓ Ready: ${target}`);
+  .action(
+    async (
+      branch: string | undefined,
+      opts: { refreshEnv?: boolean; json?: boolean },
+    ) => {
+      try {
+        const repoPath = await detectRepoRoot();
+        const target = branch ?? (await detectCurrentBranch());
+        const groveEnv = await runStart(repoPath, target, {
+          refreshEnv: opts.refreshEnv,
+          json: opts.json,
+        });
+        if (opts.json) {
+          console.log(JSON.stringify(groveEnv, null, 2));
+        } else {
+          if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
+          if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
+          console.log(`✓ Ready: ${target}`);
+        }
+      } catch (err) {
+        console.error((err as Error).message);
+        process.exit(1);
       }
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-    }
-  });
+    },
+  );
 
 // grove down [branch]
 program
@@ -241,25 +253,34 @@ program
   .description(
     "Restart the environment for a worktree (default: current worktree)",
   )
+  .option("--refresh-env", "Additively refresh .env.worktree before restarting")
   .option("--json", "Output machine-readable JSON")
-  .action(async (branch: string | undefined, opts: { json?: boolean }) => {
-    try {
-      const repoPath = await detectRepoRoot();
-      const target = branch ?? (await detectCurrentBranch());
-      await runStop(repoPath, target);
-      const groveEnv = await runStart(repoPath, target, { json: opts.json });
-      if (opts.json) {
-        console.log(JSON.stringify(groveEnv, null, 2));
-      } else {
-        if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
-        if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
-        console.log(`✓ Ready: ${target}`);
+  .action(
+    async (
+      branch: string | undefined,
+      opts: { refreshEnv?: boolean; json?: boolean },
+    ) => {
+      try {
+        const repoPath = await detectRepoRoot();
+        const target = branch ?? (await detectCurrentBranch());
+        await runStop(repoPath, target);
+        const groveEnv = await runStart(repoPath, target, {
+          refreshEnv: opts.refreshEnv,
+          json: opts.json,
+        });
+        if (opts.json) {
+          console.log(JSON.stringify(groveEnv, null, 2));
+        } else {
+          if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
+          if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
+          console.log(`✓ Ready: ${target}`);
+        }
+      } catch (err) {
+        console.error((err as Error).message);
+        process.exit(1);
       }
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-    }
-  });
+    },
+  );
 
 // grove stop <env>
 program
