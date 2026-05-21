@@ -16,6 +16,7 @@ import { mkdir, writeFile } from "fs/promises";
 import {
   resolveWorktreeRoot,
   detectRepoRoot,
+  detectCurrentBranch,
   loadWorktrees,
   detectDefaultBranch,
   createWorktreeWithBase,
@@ -60,6 +61,30 @@ describe("resolveWorktreeRoot", () => {
   test("handles deeply nested repo paths", () => {
     expect(resolveWorktreeRoot("/a/b/c/my-repo")).toBe(
       "/a/b/c/my-repo-worktrees",
+    );
+  });
+});
+
+describe("detectCurrentBranch", () => {
+  test("returns the current branch name", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "feat/my-feature\n",
+    } as ReturnType<typeof execa>);
+    const result = await detectCurrentBranch();
+    expect(result).toBe("feat/my-feature");
+  });
+
+  test("throws on detached HEAD (empty output)", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "\n",
+    } as ReturnType<typeof execa>);
+    await expect(detectCurrentBranch()).rejects.toThrow("detached HEAD");
+  });
+
+  test("throws with helpful message when git fails", async () => {
+    mockedExeca.mockRejectedValueOnce(new Error("git error"));
+    await expect(detectCurrentBranch()).rejects.toThrow(
+      "pass a branch name explicitly",
     );
   });
 });

@@ -2,6 +2,9 @@ import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
 vi.mock("../providers/docker-compose-contract.js");
+vi.mock("../tui/editor.js", () => ({
+  openInEditor: vi.fn().mockResolvedValue("VS Code"),
+}));
 
 import { execa } from "execa";
 import type { MockedFunction } from "vitest";
@@ -9,7 +12,12 @@ import { mkdtemp, rm } from "fs/promises";
 import path from "path";
 import os from "os";
 import { readEnvFile } from "../providers/docker-compose-contract.js";
-import { runConfigGet, runConfigSet, runConfigList } from "./config.js";
+import {
+  runConfigGet,
+  runConfigSet,
+  runConfigList,
+  runConfigOpen,
+} from "./config.js";
 
 const mockedExeca = execa as MockedFunction<typeof execa>;
 const mockedReadEnvFile = readEnvFile as MockedFunction<typeof readEnvFile>;
@@ -146,5 +154,40 @@ describe("runConfigList", () => {
     mockedReadEnvFile.mockResolvedValue({ WEB_PORT: "8080" });
     await runConfigList("/repo", "/repo/worktrees/feat-x");
     expect(mockedReadEnvFile).toHaveBeenCalledWith("/repo/worktrees/feat-x");
+  });
+});
+
+describe("runConfigOpen", () => {
+  test("creates config file if it does not exist and opens it", async () => {
+    const { openInEditor } = await import("../tui/editor.js");
+    await runConfigOpen("/repo");
+    expect(vi.mocked(openInEditor)).toHaveBeenCalledWith(
+      expect.stringContaining("config.json"),
+      undefined,
+    );
+  });
+
+  test("opens existing config without overwriting it", async () => {
+    await runConfigSet("/repo", "project", "my-app");
+    const { openInEditor } = await import("../tui/editor.js");
+    vi.mocked(openInEditor).mockClear();
+    await runConfigOpen("/repo");
+    expect(vi.mocked(openInEditor)).toHaveBeenCalledOnce();
+    // project value still intact
+    const project = await import("../data/userConfig.js").then((m) =>
+      m.getConfigValue("/repo", "project"),
+    );
+    expect(project).toBe("my-app");
+  });
+
+  test("passes configured editor to openInEditor", async () => {
+    await runConfigSet("/repo", "editor", "cursor");
+    const { openInEditor } = await import("../tui/editor.js");
+    vi.mocked(openInEditor).mockClear();
+    await runConfigOpen("/repo");
+    expect(vi.mocked(openInEditor)).toHaveBeenCalledWith(
+      expect.stringContaining("config.json"),
+      "cursor",
+    );
   });
 });
