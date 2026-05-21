@@ -34,6 +34,8 @@ grove        # open TUI in any repo with worktrees
 
 Grove's job is simple: for each branch, it writes a `.env.worktree` file with unique values — a different port, a different Docker project name, a different database schema. Your `docker-compose.yml` reads these variables. Each branch gets a completely isolated stack. No manual port tracking, no coordination between terminals.
 
+Grove owns `.env.worktree` (generated, disposable). You own `.env` (persistent, never overwritten by Grove).
+
 ```bash
 # .env.worktree generated for feat/login
 COMPOSE_PROJECT_NAME=my-app-feat-login

@@ -2,7 +2,7 @@ import { vi, describe, test, expect, beforeEach } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
 vi.mock("fs", () => ({ existsSync: vi.fn() }));
-vi.mock("fs/promises", () => ({ writeFile: vi.fn() }));
+vi.mock("fs/promises", () => ({ writeFile: vi.fn(), copyFile: vi.fn() }));
 vi.mock("../data/worktrees.js");
 vi.mock("../data/groveConfig.js");
 vi.mock("../setup/naming.js");
@@ -19,7 +19,7 @@ vi.mock("../utils/hardcodedPortsCheck.js");
 
 import { execa } from "execa";
 import { existsSync } from "fs";
-import { writeFile } from "fs/promises";
+import { copyFile, writeFile } from "fs/promises";
 import type { MockedFunction } from "vitest";
 import {
   resolveWorktreeRoot,
@@ -49,6 +49,7 @@ import type { GroveConfig } from "../types.js";
 const mockedExeca = execa as MockedFunction<typeof execa>;
 const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
 const mockedWriteFile = writeFile as MockedFunction<typeof writeFile>;
+const mockedCopyFile = copyFile as MockedFunction<typeof copyFile>;
 
 const fakeGroveConfig: GroveConfig = {
   enabled: true,
@@ -107,6 +108,7 @@ beforeEach(() => {
   // execa: default no-op
   mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
   mockedWriteFile.mockResolvedValue(undefined);
+  mockedCopyFile.mockResolvedValue(undefined);
 
   // shared stack: not configured by default
   vi.mocked(resolveSharedStack).mockReturnValue(null);
@@ -267,11 +269,15 @@ describe("PR number resolution", () => {
 // --- .env.worktree generation ---
 
 describe(".env.worktree generation", () => {
-  test("skips env generation when file exists and no --refreshEnv", async () => {
+  test("refreshes .env.worktree when config exists", async () => {
     vi.mocked(loadGroveConfig).mockResolvedValue(fakeGroveConfig);
     mockedExistsSync.mockReturnValue(true); // both worktree and .env.worktree exist
     await runStart("/repo", "feature", { json: true });
-    expect(mockedWriteFile).not.toHaveBeenCalled();
+    expect(mockedWriteFile).toHaveBeenCalledWith(
+      expect.stringContaining(".env.worktree"),
+      "WEB_PORT=3001\n",
+      "utf-8",
+    );
   });
 
   test("generates .env.worktree when file is absent and grove config exists", async () => {
@@ -329,6 +335,31 @@ describe(".env.worktree generation", () => {
     await expect(
       runStart("/repo", "feature", { json: true }),
     ).resolves.toBeDefined();
+  });
+});
+
+describe(".env bootstrap", () => {
+  test("bootstraps .env from .env.example when .env is missing", async () => {
+    mockedExistsSync.mockImplementation((p) => {
+      const filePath = String(p);
+      if (filePath.endsWith("/feature")) return true;
+      if (filePath.endsWith(".env")) return false;
+      if (filePath.endsWith(".env.example")) return true;
+      return true;
+    });
+
+    await runStart("/repo", "feature", { json: true });
+
+    expect(mockedCopyFile).toHaveBeenCalledWith(
+      expect.stringContaining(".env.example"),
+      expect.stringContaining(".env"),
+    );
+  });
+
+  test("does not overwrite an existing .env", async () => {
+    mockedExistsSync.mockReturnValue(true);
+    await runStart("/repo", "feature", { json: true });
+    expect(mockedCopyFile).not.toHaveBeenCalled();
   });
 });
 

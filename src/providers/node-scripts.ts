@@ -5,6 +5,7 @@ import path from "path";
 import type { GroveProvider } from "./types.js";
 import type { GroveEnvironment } from "../types.js";
 import type { Framework } from "../setup/detect.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 interface PackageJson {
   scripts?: Record<string, string>;
@@ -76,6 +77,7 @@ export class NodeScriptsProvider implements GroveProvider {
   async start(): Promise<GroveEnvironment> {
     const pkg = await readPackageJson(this.worktreePath);
     const scripts = pkg?.scripts ?? {};
+    const startupEnv = await buildStartupEnvironment(this.worktreePath);
 
     const script = scripts[this.scriptName] ?? scripts["start"];
     if (!script) {
@@ -89,6 +91,7 @@ export class NodeScriptsProvider implements GroveProvider {
       cwd: this.worktreePath,
       detached: true,
       stdio: "ignore",
+      env: startupEnv.merged,
     }).unref();
 
     const port = inferPort(scripts, this.framework);

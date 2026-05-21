@@ -24,6 +24,9 @@ jobs:
       - name: Check formatting
         run: npx prettier --check .
 
+      - name: Check entrypoint consistency
+        run: npm run check:entrypoints
+
       - name: Build
         run: npm run build
 

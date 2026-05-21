@@ -1,8 +1,9 @@
 # docker-script
 
 A Docker Compose project that uses a custom shell script to orchestrate startup.
-Grove generates `.env.worktree` as usual, then delegates `grove start` to
-`bin/start.sh` instead of calling `docker compose up` directly.
+Grove treats `.env` as user-owned and `.env.worktree` as Grove-owned, then
+delegates `grove start` to `bin/start.sh` instead of calling
+`docker compose up` directly.
 
 ## Why a custom script?
 
@@ -30,13 +31,16 @@ Use this pattern when your startup sequence needs steps that plain
 }
 ```
 
-When you run `grove start <branch>`, grove:
+When you run `grove start <branch>`, Grove:
 
-1. Creates the worktree and writes `.env.worktree` with per-worktree values
+1. Creates the worktree and bootstraps `.env` from `.env.example` only when
+   `.env` is missing.
+2. Generates or refreshes `.env.worktree` with per-worktree values
    (`COMPOSE_PROJECT_NAME`, `WEB_PORT`, `DB_PORT`, `DB_SCHEMA`, …).
-2. Invokes `bin/start.sh` with those variables already in the environment.
-3. Also sets `GROVE_ENV_FILE=<path>/.env.worktree` so the script can pass the
-   file to `docker compose --env-file "$GROVE_ENV_FILE"`.
+3. Invokes `bin/start.sh` with env precedence:
+   shell env > `.env.worktree` > `.env` > `.env.example`.
+4. Sets `GROVE_ENV_FILE=<path>/.env.worktree` so the script can pass the file
+   to `docker compose --env-file "$GROVE_ENV_FILE"`.
 
 `grove stop` calls `bin/stop.sh` the same way.
 

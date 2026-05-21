@@ -59,7 +59,10 @@ describe("DockerComposeProvider.start()", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["compose", "-p", "myapp-feature", "up"]),
-      { cwd: "/worktree/feature" },
+      expect.objectContaining({
+        cwd: "/worktree/feature",
+        env: expect.any(Object),
+      }),
     );
   });
 
@@ -110,7 +113,10 @@ describe("DockerComposeProvider.stop()", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["compose", "-p", "myapp-feature", "down"]),
-      { cwd: "/worktree/feature" },
+      expect.objectContaining({
+        cwd: "/worktree/feature",
+        env: expect.any(Object),
+      }),
     );
   });
 });

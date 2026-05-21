@@ -10,6 +10,7 @@ import {
 } from "../providers/docker-compose-contract.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 async function defaultReadline(prompt: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -51,6 +52,7 @@ export async function runDockerUp(
 
   const contract = await discoverComposeContract(wt.path);
   const envVars = await readEnvFile(wt.path);
+  const startupEnv = await buildStartupEnvironment(wt.path);
   logDebug(
     `compose expected vars: ${contract.expectedVars.join(", ") || "(none)"}`,
   );
@@ -68,6 +70,7 @@ export async function runDockerUp(
     contract,
     envVars,
     config?.envContract,
+    startupEnv.merged,
   );
   if (!preflight.ok) {
     const lines = ["Compose env preflight failed:"];
@@ -100,7 +103,7 @@ export async function runDockerUp(
   ];
   logDebug(`running in ${wt.path}`);
   logDebug(`docker ${composeArgs.join(" ")}`);
-  await execa("docker", composeArgs, { cwd: wt.path });
+  await execa("docker", composeArgs, { cwd: wt.path, env: startupEnv.merged });
   console.log(`✓ ${projectName} started`);
 }
 
@@ -121,11 +124,12 @@ export async function runDockerDown(
     throw new Error(`No .env.worktree found in ${wt.path}`);
   }
   const { projectName } = wt.docker;
+  const startupEnv = await buildStartupEnvironment(wt.path);
   console.log(`Stopping ${projectName}…`);
   await execa(
     "docker",
     ["compose", "-p", projectName, "--env-file", ".env.worktree", "down"],
-    { cwd: wt.path },
+    { cwd: wt.path, env: startupEnv.merged },
   );
   console.log(`✓ ${projectName} stopped`);
 }
@@ -148,6 +152,7 @@ export async function runDockerTeardown(
     throw new Error(`No .env.worktree found in ${wt.path}`);
   }
   const { projectName } = wt.docker;
+  const startupEnv = await buildStartupEnvironment(wt.path);
 
   const answer = await ask(
     `This will destroy all volumes for ${projectName}. Type the project name to confirm: `,
@@ -160,7 +165,7 @@ export async function runDockerTeardown(
   await execa(
     "docker",
     ["compose", "-p", projectName, "--env-file", ".env.worktree", "down", "-v"],
-    { cwd: wt.path },
+    { cwd: wt.path, env: startupEnv.merged },
   );
   console.log(`✓ ${projectName} torn down`);
 }

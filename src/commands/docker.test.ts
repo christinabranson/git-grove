@@ -109,7 +109,10 @@ describe("runDockerUp", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["compose", "-p", "myapp-feature", "up"]),
-      { cwd: "/worktrees/feature" },
+      expect.objectContaining({
+        cwd: "/worktrees/feature",
+        env: expect.any(Object),
+      }),
     );
   });
 
@@ -127,7 +130,10 @@ describe("runDockerUp", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["-p", "myapp-feat-login"]),
-      { cwd: "/worktrees/feat-login" },
+      expect.objectContaining({
+        cwd: "/worktrees/feat-login",
+        env: expect.any(Object),
+      }),
     );
   });
 });
@@ -160,7 +166,10 @@ describe("runDockerDown", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["compose", "-p", "myapp-feature", "down"]),
-      { cwd: "/worktrees/feature" },
+      expect.objectContaining({
+        cwd: "/worktrees/feature",
+        env: expect.any(Object),
+      }),
     );
   });
 });
@@ -202,7 +211,10 @@ describe("runDockerTeardown", () => {
     expect(mockedExeca).toHaveBeenCalledWith(
       "docker",
       expect.arrayContaining(["down", "-v"]),
-      { cwd: "/worktrees/feature" },
+      expect.objectContaining({
+        cwd: "/worktrees/feature",
+        env: expect.any(Object),
+      }),
     );
   });
 });

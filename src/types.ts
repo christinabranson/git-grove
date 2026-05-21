@@ -117,7 +117,7 @@ export interface GroveEnvContract {
    */
   managed?: string[];
   /**
-   * Copy these vars from source env files (.env by default) or existing .env.worktree.
+   * Copy these vars from source env files (.env and .env.example by default).
    */
   passthrough?: string[];
   /**
@@ -129,7 +129,7 @@ export interface GroveEnvContract {
    */
   required?: string[];
   /**
-   * Source env files for passthrough lookups. Defaults to [".env"].
+   * Source env files for passthrough lookups. Defaults to [".env", ".env.example"].
    */
   sourceEnvFiles?: string[];
 }

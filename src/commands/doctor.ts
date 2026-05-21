@@ -10,6 +10,7 @@ import {
   preflightComposeEnv,
   readEnvFile,
 } from "../providers/docker-compose-contract.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 export interface DoctorCheck {
   name: string;
@@ -150,6 +151,7 @@ export async function runDoctorEnv(
 
   const contract = await discoverComposeContract(wt.path);
   const envVars = await readEnvFile(wt.path);
+  const startupEnv = await buildStartupEnvironment(wt.path);
   const wtConfig =
     (await loadGroveConfig(wt.path)) ?? (await loadGroveConfig(repoPath));
   const preflight = await preflightComposeEnv(
@@ -157,6 +159,7 @@ export async function runDoctorEnv(
     contract,
     envVars,
     wtConfig?.envContract,
+    startupEnv.merged,
   );
 
   console.log(formatDoctorEnvReport(contract, envVars, preflight));

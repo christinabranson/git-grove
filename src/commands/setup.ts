@@ -95,9 +95,10 @@ function printProposedConfig(config: GroveConfig): void {
 function printGitignoreSuggestion(): void {
   console.log(
     chalk.gray(
-      "  Add these to .gitignore (per-worktree, should not be committed):",
+      "  Add these to .gitignore (local/runtime files, should not be committed):",
     ),
   );
+  console.log(chalk.gray("    .env"));
   console.log(chalk.gray("    .env.worktree"));
   console.log(chalk.gray("    .worktree-manifest.json"));
   console.log(chalk.gray("    .grove/meta.json"));
@@ -168,13 +169,10 @@ async function regenerateEnvFromConfig(
   const expanded = expandNaming(config, branch);
   const canonicalEnv = await buildCanonicalEnvVars(expanded, existingWebPort);
   const contract = await discoverComposeContract(repoPath);
-  const sourceEnv = {
-    ...(await readSourceEnvFiles(
-      repoPath,
-      config.envContract?.sourceEnvFiles ?? [".env"],
-    )),
-    ...existingEnv,
-  };
+  const sourceEnv = await readSourceEnvFiles(
+    repoPath,
+    config.envContract?.sourceEnvFiles ?? [".env", ".env.example"],
+  );
   const contractEnv = resolveContractEnvVars(
     contract,
     canonicalEnv,

@@ -12,6 +12,7 @@ import {
   createWorktreeWithBase,
 } from "../data/worktrees.js";
 import { loadGroveConfig } from "../data/groveConfig.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 import { WorktreeList } from "./WorktreeList.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { CompactFootprint } from "./ChangeFootprint.js";
@@ -88,6 +89,7 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     const { projectName } = selectedWorktree.docker;
     flash(`starting ${projectName}...`);
     try {
+      const startupEnv = await buildStartupEnvironment(selectedWorktree.path);
       await execa(
         "docker",
         [
@@ -100,7 +102,7 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
           "-d",
           "--build",
         ],
-        { cwd: selectedWorktree.path },
+        { cwd: selectedWorktree.path, env: startupEnv.merged },
       );
       flash(`${projectName} started`);
       await handleSync();
@@ -121,6 +123,9 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
       ) {
         flash(`stopping docker stack…`);
         try {
+          const startupEnv = await buildStartupEnvironment(
+            selectedWorktree.path,
+          );
           await execa(
             "docker",
             [
@@ -131,7 +136,7 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
               ".env.worktree",
               "down",
             ],
-            { cwd: selectedWorktree.path },
+            { cwd: selectedWorktree.path, env: startupEnv.merged },
           );
         } catch {
           // non-fatal — proceed with removal
@@ -156,10 +161,11 @@ export function App({ repoPath, initialWorktrees }: AppProps) {
     const { projectName } = selectedWorktree.docker;
     flash(`stopping ${projectName}...`);
     try {
+      const startupEnv = await buildStartupEnvironment(selectedWorktree.path);
       await execa(
         "docker",
         ["compose", "-p", projectName, "--env-file", ".env.worktree", "down"],
-        { cwd: selectedWorktree.path },
+        { cwd: selectedWorktree.path, env: startupEnv.merged },
       );
       flash(`${projectName} stopped`);
       await handleSync();

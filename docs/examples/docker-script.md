@@ -83,12 +83,26 @@ services:
 
 ```bash
 #!/usr/bin/env bash
-# Grove injects all .env.worktree variables into the environment before
-# calling this script, so $COMPOSE_PROJECT_NAME, $WEB_PORT, $DB_SCHEMA,
-# etc. are all available without any sourcing.
-# GROVE_ENV_FILE points at the .env.worktree file itself — pass it to
-# docker compose with --env-file so Compose sees the same values.
 set -euo pipefail
+
+# Ensure base local env exists.
+if [ ! -f .env ] && [ -f .env.example ]; then
+  cp .env.example .env
+fi
+
+# Grove should already have generated this.
+if [ ! -f .env.worktree ]; then
+  echo "Missing .env.worktree. Run through grove start." >&2
+  exit 1
+fi
+
+# Precedence: shell env > .env.worktree > .env > .env.example
+set -a
+[ -f .env ] && . ./.env
+. ./.env.worktree
+set +a
+
+GROVE_ENV_FILE="${GROVE_ENV_FILE:-.env.worktree}"
 
 COMPOSE_FLAGS=(-p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE")
 
@@ -127,10 +141,11 @@ docker compose -p "$COMPOSE_PROJECT_NAME" --env-file "$GROVE_ENV_FILE" down
 When you run `grove start <branch>`, Grove:
 
 1. Creates (or attaches) the worktree.
-2. Generates `.env.worktree` from naming templates — unique ports, compose project name, db schema, etc.
-3. Parses `.env.worktree` and injects every key=value pair into the script's environment.
-4. Sets `GROVE_ENV_FILE=<path>/.env.worktree` as an additional variable.
-5. Runs `bin/start.sh` with `cwd` set to the worktree root.
+2. Bootstraps `.env` from `.env.example` only when `.env` is missing.
+3. Generates or refreshes `.env.worktree` from naming templates — unique ports, compose project name, db schema, etc.
+4. Invokes the script with env precedence: shell env > `.env.worktree` > `.env` > `.env.example`.
+5. Sets `GROVE_ENV_FILE=<path>/.env.worktree` as an additional variable.
+6. Runs `bin/start.sh` with `cwd` set to the worktree root.
 
 `grove stop` calls `bin/stop.sh` the same way. If `stopScript` is absent from the config, Grove falls back to `docker compose -p $COMPOSE_PROJECT_NAME down`.
 
@@ -200,7 +215,9 @@ Calls `bin/stop.sh` (which runs `docker compose down`), then removes the worktre
 
 ## Variables available in your scripts
 
-All variables written to `.env.worktree` are injected, plus `GROVE_ENV_FILE`:
+Scripts receive merged values from `.env.example`, `.env`, and `.env.worktree`
+with precedence `shell > .env.worktree > .env > .env.example`, plus
+`GROVE_ENV_FILE`:
 
 | Variable               | Example value                                   |
 | ---------------------- | ----------------------------------------------- |

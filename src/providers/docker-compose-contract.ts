@@ -444,7 +444,7 @@ export async function readEnvFile(
 
 export async function readSourceEnvFiles(
   worktreePath: string,
-  fileNames: string[] = [".env"],
+  fileNames: string[] = [".env", ".env.example"],
 ): Promise<Record<string, string>> {
   const merged: Record<string, string> = {};
   for (const fileName of fileNames) {
@@ -573,7 +573,7 @@ export function resolveContractEnvVars(
       severity: required.has(variable) || strict ? "error" : "warning",
       message: `Passthrough env var not found in source env: ${variable}`,
       details:
-        "Ensure the variable exists in .env, .env.worktree, or envContract.sourceEnvFiles.",
+        "Ensure the variable exists in .env, .env.example, or envContract.sourceEnvFiles.",
     });
   }
 
@@ -850,6 +850,7 @@ export async function preflightComposeEnv(
   contract: ComposeContract,
   envVars: Record<string, string>,
   envContract?: GroveEnvContract,
+  composeProcessEnv?: Record<string, string>,
 ): Promise<PreflightResult> {
   const issues: PreflightIssue[] = [];
   const projectName = envVars["COMPOSE_PROJECT_NAME"];
@@ -886,7 +887,10 @@ export async function preflightComposeEnv(
       "--format",
       "json",
     ];
-    const { stdout } = await execa("docker", args, { cwd: worktreePath });
+    const { stdout } = await execa("docker", args, {
+      cwd: worktreePath,
+      env: composeProcessEnv,
+    });
     model = JSON.parse(stdout) as Record<string, unknown>;
   } catch (error) {
     const message = (error as Error).message;
