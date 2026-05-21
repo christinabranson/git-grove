@@ -90,7 +90,7 @@ export async function openInEditor(
   const editor = await resolveEditor(groveConfigEditor);
   if (!editor)
     throw new Error(
-      'no editor found — set $VISUAL, $EDITOR, or add "editor" to .grove/config.json',
+      "no editor found — set $VISUAL, $EDITOR, or run `grove config set editor <cmd>`",
     );
 
   const isGui =

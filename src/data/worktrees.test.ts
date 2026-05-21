@@ -1,4 +1,5 @@
 import { vi, describe, test, expect, beforeEach } from "vitest";
+import path from "path";
 import type { MockedFunction } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
@@ -64,12 +65,21 @@ describe("resolveWorktreeRoot", () => {
 });
 
 describe("detectRepoRoot", () => {
-  test("returns the repo root from git rev-parse", async () => {
+  test("returns the repo root from git rev-parse --git-common-dir", async () => {
     mockedExeca.mockResolvedValueOnce({
-      stdout: "/path/to/repo\n",
+      stdout: "/path/to/repo/.git\n",
     } as ReturnType<typeof execa>);
     const result = await detectRepoRoot();
     expect(result).toBe("/path/to/repo");
+  });
+
+  test("resolves relative .git path (main repo case)", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: ".git\n",
+    } as ReturnType<typeof execa>);
+    const result = await detectRepoRoot();
+    // path.dirname(path.resolve(".git")) == the current working directory
+    expect(result).toBe(path.dirname(path.resolve(".git")));
   });
 
   test("throws when not inside a git repository", async () => {
@@ -81,7 +91,7 @@ describe("detectRepoRoot", () => {
 
   test("trims whitespace from git output", async () => {
     mockedExeca.mockResolvedValueOnce({
-      stdout: "  /path/to/repo  \n",
+      stdout: "  /path/to/repo/.git  \n",
     } as ReturnType<typeof execa>);
     const result = await detectRepoRoot();
     expect(result).toBe("/path/to/repo");

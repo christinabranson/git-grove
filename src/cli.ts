@@ -4,7 +4,11 @@ import { program } from "commander";
 import { LOGO } from "./tui/logo.js";
 import { render } from "ink";
 import React from "react";
-import { loadWorktrees, detectRepoRoot } from "./data/worktrees.js";
+import {
+  loadWorktrees,
+  detectRepoRoot,
+  detectCurrentBranch,
+} from "./data/worktrees.js";
 import { App } from "./tui/App.js";
 import { runStatus } from "./commands/status.js";
 import { runSync } from "./commands/sync.js";
@@ -30,6 +34,7 @@ import {
   runConfigGet,
   runConfigSet,
   runConfigList,
+  runConfigOpen,
 } from "./commands/config.js";
 import { formatConfigHelp } from "./data/configSchema.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
@@ -156,6 +161,105 @@ program
       }
     },
   );
+
+// grove new <target> [--base <branch>]
+program
+  .command("new <target>")
+  .description("Create a new branch worktree and start its environment")
+  .option(
+    "--base <branch>",
+    "Base branch to create from (default: repo default branch)",
+  )
+  .option("--json", "Output machine-readable JSON")
+  .action(async (target: string, opts: { base?: string; json?: boolean }) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      const groveEnv = await runStart(repoPath, target, {
+        new: true,
+        base: opts.base,
+        json: opts.json,
+      });
+      if (opts.json) {
+        console.log(JSON.stringify(groveEnv, null, 2));
+      } else {
+        if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
+        if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
+        console.log(`  source: ${groveEnv.metadata.source}`);
+        console.log(`✓ Ready: ${target}`);
+      }
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+// grove up [branch]
+program
+  .command("up [branch]")
+  .description(
+    "Start the environment for a worktree (default: current worktree)",
+  )
+  .option("--json", "Output machine-readable JSON")
+  .action(async (branch: string | undefined, opts: { json?: boolean }) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      const target = branch ?? (await detectCurrentBranch());
+      const groveEnv = await runStart(repoPath, target, { json: opts.json });
+      if (opts.json) {
+        console.log(JSON.stringify(groveEnv, null, 2));
+      } else {
+        if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
+        if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
+        console.log(`✓ Ready: ${target}`);
+      }
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+// grove down [branch]
+program
+  .command("down [branch]")
+  .description(
+    "Stop the environment for a worktree (default: current worktree)",
+  )
+  .action(async (branch?: string) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      const target = branch ?? (await detectCurrentBranch());
+      await runStop(repoPath, target);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+// grove restart [branch]
+program
+  .command("restart [branch]")
+  .description(
+    "Restart the environment for a worktree (default: current worktree)",
+  )
+  .option("--json", "Output machine-readable JSON")
+  .action(async (branch: string | undefined, opts: { json?: boolean }) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      const target = branch ?? (await detectCurrentBranch());
+      await runStop(repoPath, target);
+      const groveEnv = await runStart(repoPath, target, { json: opts.json });
+      if (opts.json) {
+        console.log(JSON.stringify(groveEnv, null, 2));
+      } else {
+        if (groveEnv.web) console.log(`  web: ${groveEnv.web.url}`);
+        if (groveEnv.api) console.log(`  api: ${groveEnv.api.url}`);
+        console.log(`✓ Ready: ${target}`);
+      }
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
 
 // grove stop <env>
 program
@@ -330,13 +434,13 @@ configCmd
   });
 
 configCmd
-  .command("set <key> <value>")
+  .command("set <key> <value...>")
   .description("Set a config value by dot-path key")
   .addHelpText("after", formatConfigHelp())
-  .action(async (key: string, value: string) => {
+  .action(async (key: string, values: string[]) => {
     try {
       const repoPath = await detectRepoRoot();
-      await runConfigSet(repoPath, key, value);
+      await runConfigSet(repoPath, key, values.join(" "));
     } catch (err) {
       console.error((err as Error).message);
       process.exit(1);
@@ -350,6 +454,19 @@ configCmd
     try {
       const repoPath = await detectRepoRoot();
       await runConfigList(repoPath);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command("open")
+  .description("Open the Grove config file in your editor")
+  .action(async () => {
+    try {
+      const repoPath = await detectRepoRoot();
+      await runConfigOpen(repoPath);
     } catch (err) {
       console.error((err as Error).message);
       process.exit(1);

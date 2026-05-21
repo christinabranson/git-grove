@@ -1,5 +1,7 @@
 import chalk from "chalk";
 import path from "path";
+import { mkdir, writeFile } from "fs/promises";
+import { existsSync } from "fs";
 import {
   getConfigValue,
   setConfigValue,
@@ -10,6 +12,7 @@ import {
   getGroveHome,
 } from "../data/userConfig.js";
 import { readEnvFile } from "../providers/docker-compose-contract.js";
+import { openInEditor } from "../tui/editor.js";
 
 export async function runConfigGet(
   repoPath: string,
@@ -71,4 +74,20 @@ export async function runConfigList(
   }
 
   console.log("");
+}
+
+export async function runConfigOpen(repoPath: string): Promise<void> {
+  const repoId = await getRepoId(repoPath);
+  const configPath = getRepoConfigPath(repoId);
+
+  if (!existsSync(configPath)) {
+    await mkdir(path.dirname(configPath), { recursive: true });
+    await writeFile(configPath, "{}\n", "utf-8");
+  }
+
+  const editor = (await getConfigValue(repoPath, "editor")) as
+    | string
+    | undefined;
+  const displayName = await openInEditor(configPath, editor);
+  console.log(chalk.green(`✓`) + ` Opened config in ${displayName}`);
 }
