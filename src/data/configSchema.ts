@@ -44,8 +44,24 @@ export const CONFIG_SECTIONS: ConfigSection[] = [
     },
   },
   {
+    label: "Lifecycle",
+    note: "Shell commands that start and stop the worktree environment",
+    keys: {
+      start: {
+        type: "string",
+        description:
+          'Command or script to start the environment (e.g. "npm run dev", "./scripts/start.sh")',
+      },
+      stop: {
+        type: "string",
+        description:
+          "Command or script to stop the environment. Falls back to docker compose down when absent.",
+      },
+    },
+  },
+  {
     label: "providers.<name>",
-    note: 'Use "web" or "api" for <name> (e.g. providers.web.type)',
+    note: 'Advanced: use "start"/"stop" above for simple cases. Use "web" or "api" for <name>.',
     keys: {
       "providers.<name>.type": {
         type: { enum: ["docker-compose", "node-scripts", "custom-shell"] },

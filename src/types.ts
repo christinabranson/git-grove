@@ -138,9 +138,23 @@ export interface GroveConfig {
   enabled: boolean;
   project: string;
   editor?: string;
+  /**
+   * Shell command (or path starting with ./ or /) to start the worktree environment.
+   * Supersedes `providers` when set. The command runs with .env.worktree and .env values
+   * pre-merged into its environment.
+   * Examples: "npm run dev:up:docker", "./scripts/start.sh"
+   */
+  start?: string;
+  /**
+   * Shell command (or path) to stop the worktree environment.
+   * Falls back to `docker compose down` when absent and a compose file is detected.
+   * Examples: "npm run dev:down:docker", "./scripts/stop.sh"
+   */
+  stop?: string;
   /** Path to the shared infrastructure compose file. Default: "compose.shared.yaml" */
   sharedComposeFile?: string;
-  providers: Record<string, GroveConfigProvider>;
+  /** Legacy / advanced provider config. Use `start`/`stop` for simple cases. */
+  providers?: Record<string, GroveConfigProvider>;
   shared?: Record<string, boolean>;
   naming?: GroveConfigNaming;
   envContract?: GroveEnvContract;

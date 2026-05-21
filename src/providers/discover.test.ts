@@ -82,6 +82,39 @@ describe("discoverProvider — auto-detection (no config)", () => {
   });
 });
 
+describe("discoverProvider — top-level start command", () => {
+  test("returns custom-shell provider when config.start is set", async () => {
+    vi.mocked(loadGroveConfig).mockResolvedValue(
+      makeConfig({ start: "npm run dev" }),
+    );
+    const provider = await discoverProvider("/worktree", "feature");
+    expect(provider.name).toBe("custom-shell");
+  });
+
+  test("start takes precedence over providers config", async () => {
+    vi.mocked(loadGroveConfig).mockResolvedValue(
+      makeConfig({
+        start: "npm run dev",
+        providers: { web: { type: "docker-compose" } },
+      }),
+    );
+    const provider = await discoverProvider("/worktree", "feature");
+    expect(provider.name).toBe("custom-shell");
+  });
+
+  test("start takes precedence over auto-detected docker-compose", async () => {
+    vi.mocked(detectProject).mockResolvedValue({
+      ...noDetection,
+      hasDockerCompose: true,
+    } as never);
+    vi.mocked(loadGroveConfig).mockResolvedValue(
+      makeConfig({ start: "npm run dev" }),
+    );
+    const provider = await discoverProvider("/worktree", "feature");
+    expect(provider.name).toBe("custom-shell");
+  });
+});
+
 describe("discoverProvider — explicit config", () => {
   test("returns docker-compose provider from config", async () => {
     vi.mocked(loadGroveConfig).mockResolvedValue(
