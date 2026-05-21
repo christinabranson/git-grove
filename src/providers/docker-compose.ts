@@ -10,6 +10,7 @@ import {
   preflightComposeEnv,
   readEnvFile,
 } from "./docker-compose-contract.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 interface EnvAgentVars {
   projectName: string;
@@ -93,6 +94,7 @@ export class DockerComposeProvider implements GroveProvider {
     const vars = await parseEnvAgentAsync(this.worktreePath);
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
     const config = await loadGroveConfig(this.worktreePath);
+    const startupEnv = await buildStartupEnvironment(this.worktreePath);
 
     const contract = await discoverComposeContract(this.worktreePath);
     const envVars = await readEnvFile(this.worktreePath);
@@ -101,6 +103,7 @@ export class DockerComposeProvider implements GroveProvider {
       contract,
       envVars,
       config?.envContract,
+      startupEnv.merged,
     );
     if (!preflight.ok) {
       const lines = ["Compose env preflight failed:"];
@@ -131,7 +134,7 @@ export class DockerComposeProvider implements GroveProvider {
         "-d",
         "--build",
       ],
-      { cwd: this.worktreePath },
+      { cwd: this.worktreePath, env: startupEnv.merged },
     );
 
     return this._buildEnv(vars, "running");
@@ -140,10 +143,11 @@ export class DockerComposeProvider implements GroveProvider {
   async stop(): Promise<void> {
     const vars = await parseEnvAgentAsync(this.worktreePath);
     const projectName = vars?.projectName ?? path.basename(this.worktreePath);
+    const startupEnv = await buildStartupEnvironment(this.worktreePath);
     await execa(
       "docker",
       ["compose", "-p", projectName, "--env-file", ".env.worktree", "down"],
-      { cwd: this.worktreePath },
+      { cwd: this.worktreePath, env: startupEnv.merged },
     );
   }
 

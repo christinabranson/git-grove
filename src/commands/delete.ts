@@ -1,6 +1,7 @@
 import { createInterface } from "readline";
 import { execa } from "execa";
 import { loadWorktrees } from "../data/worktrees.js";
+import { buildStartupEnvironment } from "../utils/envFiles.js";
 
 async function defaultAsk(prompt: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -45,6 +46,7 @@ export async function runDelete(
   ) {
     console.log(`Stopping docker stack ${wt.docker.projectName}…`);
     try {
+      const startupEnv = await buildStartupEnvironment(wt.path);
       await execa(
         "docker",
         [
@@ -55,7 +57,7 @@ export async function runDelete(
           ".env.worktree",
           "down",
         ],
-        { cwd: wt.path },
+        { cwd: wt.path, env: startupEnv.merged },
       );
       console.log(`✓ Docker stack stopped`);
     } catch {
