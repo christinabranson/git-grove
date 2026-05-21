@@ -26,6 +26,12 @@ import { runPrune } from "./commands/prune.js";
 import { runInfo } from "./commands/info.js";
 import { runSetup } from "./commands/setup.js";
 import { runDoctor, runDoctorEnv } from "./commands/doctor.js";
+import {
+  runConfigGet,
+  runConfigSet,
+  runConfigList,
+} from "./commands/config.js";
+import { formatConfigHelp } from "./data/configSchema.js";
 import { warnIfNotGitignored } from "./utils/gitignoreCheck.js";
 import type { PresetName } from "./setup/presets.js";
 
@@ -305,10 +311,55 @@ program
     }
   });
 
+// grove config <get|set|list>
+const configCmd = program
+  .command("config")
+  .description("View and edit Grove configuration");
+
+configCmd
+  .command("get <key>")
+  .description("Get a config value by dot-path key")
+  .action(async (key: string) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      await runConfigGet(repoPath, key);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command("set <key> <value>")
+  .description("Set a config value by dot-path key")
+  .addHelpText("after", formatConfigHelp())
+  .action(async (key: string, value: string) => {
+    try {
+      const repoPath = await detectRepoRoot();
+      await runConfigSet(repoPath, key, value);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command("list")
+  .description("List all config values for the current repo")
+  .action(async () => {
+    try {
+      const repoPath = await detectRepoRoot();
+      await runConfigList(repoPath);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+  });
+
 // grove setup
 program
   .command("setup")
-  .description("Detect project type and write .grove/config.json")
+  .description("Detect project type and write Grove config to ~/.grove/")
   .option("--preset <name>", "Use a specific preset (docker, vite, node)")
   .option("--dry-run", "Print proposed config without writing anything")
   .option(

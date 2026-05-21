@@ -8,14 +8,14 @@ A complete walkthrough of using Grove with a Docker Compose project — shared d
 my-app/
 ├── compose.yaml           # per-worktree: web, api
 ├── compose.shared.yaml    # shared: db, redis
-├── .env                   # base secrets (gitignored)
-└── .grove/
-    └── config.json        # committed
+└── .env                   # base secrets (gitignored)
 ```
+
+Grove config is stored in `~/.grove/` on your machine — run `grove setup` once to generate it, then use `grove config set` to customize.
 
 ## Config
 
-**`.grove/config.json`:**
+**Grove config** (run `grove setup` to generate, `grove config list` to view):
 
 ```json
 {

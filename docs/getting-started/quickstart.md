@@ -99,7 +99,7 @@ If your project uses Docker Compose or a Node dev server, Grove can automaticall
 grove setup
 ```
 
-Grove inspects your project and proposes a `.grove/config.json`. It detects Docker Compose files, Vite configs, and `package.json` scripts automatically. Review and confirm.
+Grove inspects your project and proposes a config. It detects Docker Compose files, Vite configs, and `package.json` scripts automatically. Review and confirm — config is saved to `~/.grove/` on your machine.
 
 Then `grove start` does more:
 

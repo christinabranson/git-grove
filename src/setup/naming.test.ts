@@ -130,7 +130,7 @@ describe("expandNaming", () => {
     });
   });
 
-  test("normalizes scalar canonical ports from naming.ports overrides", () => {
+  test("scalar naming.webPort/apiPort/dbPort take precedence over naming.ports map", () => {
     const config: GroveConfig = {
       ...baseConfig,
       naming: {
@@ -145,13 +145,13 @@ describe("expandNaming", () => {
       },
     };
     const result = expandNaming(config, "main");
-    expect(result.webPort).toBe(63000);
-    expect(result.apiPort).toBe(63001);
-    expect(result.dbPort).toBe(63002);
+    expect(result.webPort).toBe(62000);
+    expect(result.apiPort).toBe(62001);
+    expect(result.dbPort).toBe(62002);
     expect(result.ports).toMatchObject({
-      WEB_PORT: 63000,
-      API_PORT: 63001,
-      DB_PORT: 63002,
+      WEB_PORT: 62000,
+      API_PORT: 62001,
+      DB_PORT: 62002,
     });
   });
 

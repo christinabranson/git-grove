@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, readFile } from "fs/promises";
+import { cp, mkdir, mkdtemp, rm, readFile, readdir } from "fs/promises";
 import path from "path";
 import os from "os";
 import { execa } from "execa";
@@ -12,6 +12,7 @@ export const CLI_BIN = path.join(PROJECT_ROOT, "dist", "cli.js");
 
 export interface TempRepo {
   repoPath: string;
+  groveHome: string;
   cleanup: () => Promise<void>;
 }
 
@@ -31,7 +32,9 @@ export async function createTempExampleRepo(
 ): Promise<TempRepo> {
   const parentDir = await mkdtemp(path.join(os.tmpdir(), "grove-e2e-"));
   const repoPath = path.join(parentDir, exampleName);
+  const groveHome = path.join(parentDir, ".grove-home");
   await mkdir(repoPath);
+  await mkdir(groveHome);
 
   const templateDir = path.join(EXAMPLES_DIR, exampleName, "template");
   await cp(templateDir, repoPath, { recursive: true });
@@ -50,18 +53,20 @@ export async function createTempExampleRepo(
 
   return {
     repoPath,
+    groveHome,
     cleanup: () => rm(parentDir, { recursive: true, force: true }),
   };
 }
 
 async function runGroveCli(
-  repoPath: string,
+  repo: TempRepo,
   command: string,
   extraArgs: string[] = [],
 ): Promise<CliResult> {
   try {
     const result = await execa("node", [CLI_BIN, command, ...extraArgs], {
-      cwd: repoPath,
+      cwd: repo.repoPath,
+      env: { ...process.env, GROVE_HOME: repo.groveHome },
     });
     return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
   } catch (err: unknown) {
@@ -75,17 +80,37 @@ async function runGroveCli(
 }
 
 export function runGroveSetup(
-  repoPath: string,
+  repo: TempRepo,
   extraArgs: string[] = [],
 ): Promise<CliResult> {
-  return runGroveCli(repoPath, "setup", ["--yes", ...extraArgs]);
+  return runGroveCli(repo, "setup", ["--yes", ...extraArgs]);
 }
 
 export function runGroveDoctor(
-  repoPath: string,
+  repo: TempRepo,
   extraArgs: string[] = [],
 ): Promise<CliResult> {
-  return runGroveCli(repoPath, "doctor", extraArgs);
+  return runGroveCli(repo, "doctor", extraArgs);
+}
+
+export function runGroveConfig(
+  repo: TempRepo,
+  args: string[] = [],
+): Promise<CliResult> {
+  return runGroveCli(repo, "config", args);
+}
+
+/**
+ * Read the grove config JSON from GROVE_HOME. Assumes exactly one repo has
+ * been configured (which is true in isolated e2e tests).
+ */
+export async function readGroveConfigJson(
+  repo: TempRepo,
+): Promise<Record<string, unknown>> {
+  const reposDir = path.join(repo.groveHome, "repos");
+  const entries = await readdir(reposDir);
+  const configPath = path.join(reposDir, entries[0], "config.json");
+  return JSON.parse(await readFile(configPath, "utf-8"));
 }
 
 export async function readGeneratedFile(

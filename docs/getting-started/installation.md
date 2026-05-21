@@ -54,34 +54,31 @@ git config --global core.excludesfile
 
 # Add the grove entries
 echo '.env.worktree' >> ~/.gitignore_global
-echo '.worktree-manifest.json' >> ~/.gitignore_global
-echo '.grove/meta.json' >> ~/.gitignore_global
+echo '.grove' >> ~/.gitignore_global
 ```
 
 If you haven't set one up yet:
 
 ```bash
 echo '.env.worktree' >> ~/.gitignore_global
-echo '.worktree-manifest.json' >> ~/.gitignore_global
-echo '.grove/meta.json' >> ~/.gitignore_global
+echo '.grove' >> ~/.gitignore_global
 git config --global core.excludesfile ~/.gitignore_global
 ```
 
-| File                      | What it is                                                 |
-| ------------------------- | ---------------------------------------------------------- |
-| `.env.worktree`           | Port assignments and Compose project name (per branch)     |
-| `.worktree-manifest.json` | Agent status file written at runtime                       |
-| `.grove/meta.json`        | Base branch recorded when creating a worktree with `--new` |
+| File                          | What it is                                                 |
+| ----------------------------- | ---------------------------------------------------------- |
+| `.env.worktree`               | Port assignments and Compose project name (per branch)     |
+| `.grove/active-worktree.json` | Base branch recorded when creating a worktree with `--new` |
 
 These are machine-local and per-session — committing them would break other developers' environments.
 
-> **Note:** `.grove/config.json` is different — it describes how the project works and **should** be committed. Only the runtime state files above need to stay out of git.
+> **Note:** Grove configuration is stored in `~/.grove/` on your machine, not in the repository. Each developer runs `grove setup` once to generate their own config.
 
 ## Editor detection
 
 Grove auto-detects your editor for `grove open` — no config required. It checks in order:
 
-1. `editor` field in `.grove/config.json`
+1. `editor` field in Grove config (`grove config set editor <cmd>`)
 2. `$VISUAL` environment variable
 3. `$EDITOR` environment variable
 4. Scans `PATH` for `code`, `cursor`, `windsurf`, `vim`, `nano`
@@ -132,7 +129,7 @@ git worktree list    # should work without error
 
 ### `grove open` opens the wrong editor (or nothing)
 
-Grove auto-detects your editor in priority order: `.grove/config.json` → `$VISUAL` → `$EDITOR` → PATH scan → macOS app bundles.
+Grove auto-detects your editor in priority order: Grove config → `$VISUAL` → `$EDITOR` → PATH scan → macOS app bundles.
 
 To force a specific editor, set `$VISUAL` in your shell profile:
 
@@ -143,10 +140,10 @@ export VISUAL="cursor" # Cursor
 export VISUAL="vim"    # Vim
 ```
 
-Or configure it explicitly in `.grove/config.json`:
+Or configure it explicitly via Grove:
 
-```json
-{ "editor": "code" }
+```bash
+grove config set editor code
 ```
 
 ### Permission errors during `npm install -g`

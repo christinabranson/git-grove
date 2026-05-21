@@ -8,7 +8,7 @@ Monorepos typically run multiple services in parallel (web, api, worker, etc.). 
 
 ## Configuration
 
-Declare your services as providers in `.grove/config.json`:
+Declare your services as providers via `grove config set` (or run `grove setup` which auto-detects them). The full config shape:
 
 ```json
 {
@@ -100,10 +100,10 @@ By default, Grove places worktrees at `<repo-parent>/<repo-name>-worktrees/`. In
 }
 ```
 
-Or use an environment variable for machine-specific overrides without touching the config:
+Or set it permanently in your Grove config:
 
 ```bash
-GROVE_WORKTREE_ROOT=/fast-disk/worktrees grove start feat/my-feature
+grove config set worktrees.root /fast-disk/worktrees
 ```
 
 ## Parallel development across workspaces

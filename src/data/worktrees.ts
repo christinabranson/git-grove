@@ -103,7 +103,7 @@ async function readBaseBranch(
   branch: string,
 ): Promise<string | null> {
   // 1. Grove-written metadata (set when worktree was created with --base)
-  const metaPath = path.join(worktreePath, ".grove", "meta.json");
+  const metaPath = path.join(worktreePath, ".grove", "active-worktree.json");
   if (existsSync(metaPath)) {
     try {
       const raw = await readFile(metaPath, "utf-8");
@@ -428,7 +428,7 @@ export async function createWorktreeWithBase(
   const groveMetaDir = path.join(worktreePath, ".grove");
   await mkdir(groveMetaDir, { recursive: true });
   await writeFile(
-    path.join(groveMetaDir, "meta.json"),
+    path.join(groveMetaDir, "active-worktree.json"),
     JSON.stringify({ baseBranch: base }, null, 2),
   );
 }

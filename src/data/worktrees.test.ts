@@ -369,7 +369,7 @@ describe("createWorktreeWithBase", () => {
     );
   });
 
-  test("writes .grove/meta.json with the base branch", async () => {
+  test("writes .grove/active-worktree.json with the base branch", async () => {
     mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
     await createWorktreeWithBase(
       "/repo",
@@ -381,7 +381,7 @@ describe("createWorktreeWithBase", () => {
       recursive: true,
     });
     expect(mockedWriteFile).toHaveBeenCalledWith(
-      "/worktrees/feature-foo/.grove/meta.json",
+      "/worktrees/feature-foo/.grove/active-worktree.json",
       JSON.stringify({ baseBranch: "main" }, null, 2),
     );
   });

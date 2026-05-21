@@ -66,10 +66,10 @@ export function expandNaming(
   const webPort = naming.webPort ?? "auto";
   const apiPort = naming.apiPort ?? "auto";
   const effectivePorts: Record<string, number | "auto"> = {
+    ...(naming.ports ?? {}),
     WEB_PORT: webPort,
     API_PORT: apiPort,
     DB_PORT: dbPort,
-    ...(naming.ports ?? {}),
   };
 
   return {
@@ -202,10 +202,10 @@ export async function buildCanonicalEnvVars(
   existingWebPort?: number,
 ): Promise<Record<string, string>> {
   const portSpecs: Record<string, number | "auto"> = {
+    ...expanded.ports,
     WEB_PORT: expanded.webPort,
     API_PORT: expanded.apiPort,
     DB_PORT: expanded.dbPort,
-    ...expanded.ports,
   };
 
   const dockerReserved = new Set<number>(await getDockerPublishedHostPorts());

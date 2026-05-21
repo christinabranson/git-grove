@@ -10,7 +10,7 @@ When you run `grove start`, Grove:
 
 1. Creates the worktree directory
 2. Bootstraps `.env` from `.env.example` when `.env` is missing
-3. Generates or refreshes `.env.worktree` from naming templates (if `.grove/config.json` exists)
+3. Generates or refreshes `.env.worktree` from naming templates (if Grove config exists)
 4. Starts the shared infrastructure stack (if configured)
 5. Runs `docker compose up -d --build` for the worktree
 
@@ -22,11 +22,11 @@ When you run `grove start`, Grove:
 grove setup
 ```
 
-Grove detects your `docker-compose.yml` or `compose.yaml` and proposes a config. Confirm and it writes `.grove/config.json`.
+Grove detects your `docker-compose.yml` or `compose.yaml` and proposes a config. Confirm and it saves to `~/.grove/`.
 
 ### Step 2 — Review the config
 
-`.grove/config.json` for a typical Docker project:
+Grove config shape for a typical Docker project (view with `grove config list`):
 
 ```json
 {
@@ -127,16 +127,13 @@ Docker Compose creates a network named `<project>_default` for every project. Pe
 
 ### Config for shared infrastructure
 
-```json
-{
-  "shared": { "db": true, "redis": true },
-  "sharedComposeFile": "compose.shared.yaml",
-  "naming": {
-    "sharedProject": "my-app-shared",
-    "composeProject": "my-app-${branch_safe}"
-  }
-}
+```bash
+grove config set naming.sharedProject my-app-shared
+grove config set naming.composeProject "my-app-\${branch_safe}"
+grove config set sharedComposeFile compose.shared.yaml
 ```
+
+Or view the full config shape with `grove config list` after running `grove setup`.
 
 `naming.sharedProject` is required to enable shared stack management. Grove writes `SHARED_PROJECT_NAME=my-app-shared` into every `.env.worktree`.
 
@@ -152,7 +149,7 @@ grove shared down     # stop
 
 ## Env contract
 
-For projects with secrets or derived env vars, configure `envContract` in `.grove/config.json`:
+For projects with secrets or derived env vars, configure `envContract` via `grove config set` (or set the JSON values directly after `grove setup`):
 
 ```json
 {
@@ -206,13 +203,22 @@ Your script is responsible for the actual `docker compose up` call and any surro
 
 ### Config
 
+After `grove setup --preset docker`, configure the `custom-shell` provider:
+
+```bash
+grove config set providers.web.type custom-shell
+grove config set providers.web.script bin/start.sh
+grove config set providers.web.stopScript bin/stop.sh
+```
+
+The full config shape (view with `grove config list`):
+
 ```json
 {
   "project": "my-app",
   "providers": {
     "web": {
       "type": "custom-shell",
-      "service": "web",
       "script": "bin/start.sh",
       "stopScript": "bin/stop.sh"
     }
