@@ -15,11 +15,7 @@ import { runSync } from "./commands/sync.js";
 import { runOpen } from "./commands/open.js";
 import { runStart } from "./commands/start.js";
 import { runStop } from "./commands/stop.js";
-import {
-  runDockerUp,
-  runDockerDown,
-  runDockerTeardown,
-} from "./commands/docker.js";
+import { runDestroy } from "./commands/destroy.js";
 import {
   runSharedUp,
   runSharedDown,
@@ -296,47 +292,18 @@ program
     }
   });
 
-// grove docker <up|down|teardown> [branch]
-const docker = program
-  .command("docker")
-  .description("Manage docker compose stack for a worktree");
-
-docker
-  .command("up [branch]")
-  .description("Start docker compose stack for a worktree")
-  .option("--debug", "Enable debug output")
-  .action(async (branch: string | undefined, opts: { debug?: boolean }) => {
-    try {
-      const repoPath = await detectRepoRoot();
-      await runDockerUp(repoPath, branch, opts);
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-    }
-  });
-
-docker
-  .command("down [branch]")
-  .description("Stop docker compose stack for a worktree")
-  .action(async (branch?: string) => {
-    try {
-      const repoPath = await detectRepoRoot();
-      await runDockerDown(repoPath, branch);
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-    }
-  });
-
-docker
-  .command("teardown [branch]")
+// grove destroy [branch]
+program
+  .command("destroy [branch]")
   .description(
-    "Tear down docker compose stack and volumes (destructive — prompts for confirmation)",
+    "Tear down docker compose stack and volumes for a worktree (destructive — prompts for confirmation)",
   )
-  .action(async (branch?: string) => {
+  .option("--yes", "Skip confirmation prompt")
+  .action(async (branch: string | undefined, opts: { yes?: boolean }) => {
     try {
       const repoPath = await detectRepoRoot();
-      await runDockerTeardown(repoPath, branch);
+      const target = branch ?? (await detectCurrentBranch());
+      await runDestroy(repoPath, target, opts);
     } catch (err) {
       console.error((err as Error).message);
       process.exit(1);
