@@ -485,7 +485,7 @@ program
   )
   .option("--debug", "Enable debug output")
   .option("--yes", "Skip confirmation prompt")
-  .option("--reset", "Overwrite existing .grove/config.json")
+  .option("--reset", "Overwrite existing Grove config in ~/.grove/")
   .action(
     async (opts: {
       preset?: string;

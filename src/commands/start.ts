@@ -175,7 +175,7 @@ export async function runStart(
   } else if (!groveConfig && !opts.json && opts.refreshEnv) {
     console.log(
       chalk.yellow(
-        "  warning: --refresh-env requested but no .grove/config.json was found",
+        "  warning: --refresh-env requested but no Grove config was found — run `grove config set` to configure",
       ),
     );
   }

@@ -47,7 +47,7 @@ const DOCKER_PUBLISHED_PORT_RE =
   /(?:^|[\s,])(?:[^\s:,]+:)?(\d{2,5})->\d{2,5}\/(?:tcp|udp)/g;
 
 /**
- * Expand naming templates from .grove/config.json for a specific branch.
+ * Expand naming templates from Grove config for a specific branch.
  */
 export function expandNaming(
   config: GroveConfig,
@@ -218,7 +218,7 @@ export async function buildCanonicalEnvVars(
       const duplicateKey = configuredByPort.get(value);
       if (duplicateKey) {
         throw new Error(
-          `Port ${value} is configured for both ${duplicateKey} and ${key}. Update .grove/config.json naming.ports or naming.webPort/naming.apiPort/naming.dbPort.`,
+          `Port ${value} is configured for both ${duplicateKey} and ${key}. Run \`grove config set naming.ports.${key} <port>\` or update naming.webPort/naming.apiPort/naming.dbPort.`,
         );
       }
       if (dockerReserved.has(value)) {

@@ -17,7 +17,7 @@ export async function runSharedUp(repoPath: string): Promise<void> {
   const info = resolveSharedStack(repoPath, config);
   if (!info) {
     throw new Error(
-      "No shared stack configured. Add naming.sharedProject to .grove/config.json.",
+      "No shared stack configured. Run `grove config set naming.sharedProject <name>`.",
     );
   }
   if (!info.exists) {

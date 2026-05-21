@@ -345,7 +345,7 @@ export async function loadWorktrees(
  *
  * Priority:
  *   1. $GROVE_WORKTREE_ROOT environment variable
- *   2. worktrees.root in .grove/config.json
+ *   2. worktrees.root in Grove config (~/.grove/repos/<id>/config.json)
  *   3. Default: <repo-parent>/<repo-name>-worktrees
  */
 export function resolveWorktreeRoot(

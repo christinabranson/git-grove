@@ -838,7 +838,7 @@ export function analyzeResolvedPorts(
       details:
         "This often means compose interpolated a fallback default instead of Grove-generated vars.",
       suggestion:
-        "Add alias variable(s) in .env.worktree or map them via .grove/config.json naming.ports.",
+        "Add alias variable(s) in .env.worktree or map them via `grove config set naming.ports.<VAR> <port>`.",
     });
   }
 
@@ -872,7 +872,7 @@ export async function preflightComposeEnv(
         severity: "error",
         message: `Missing required compose variable: ${variable}`,
         suggestion:
-          "Add alias in .env.worktree or update .grove/config.json naming.ports to cover this variable.",
+          "Add alias in .env.worktree or run `grove config set naming.ports.<VAR> <port>` to cover this variable.",
       });
     }
   }

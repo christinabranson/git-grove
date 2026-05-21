@@ -36,7 +36,7 @@ class FallbackProvider implements GroveProvider {
  *
  * Resolution is a three-stage pipeline:
  *   1. detectProject() — single filesystem scan, produces all capability hints
- *   2. .grove/config.json — optional explicit override
+ *   2. Grove config (~/.grove/) — optional explicit override
  *   3. Provider routing — pure decision logic, no additional filesystem reads
  */
 export async function discoverProvider(
@@ -105,7 +105,7 @@ function resolveFromConfig(
     case "custom-shell":
       if (!providerConfig.script) {
         throw new Error(
-          `custom-shell provider requires a "script" field in .grove/config.json`,
+          `custom-shell provider requires a "script" field — run \`grove config set providers.<name>.script <path>\``,
         );
       }
       return new CustomShellProvider(
