@@ -42,6 +42,7 @@
     "@types/react": "^18.2.0",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^2.1.9",
+    "fallow": "^3.2.0",
     "husky": "^9.1.7",
     "ink-testing-library": "^3.0.0",
     "lint-staged": "^15.5.2",
@@ -57,7 +58,7 @@
     "type": "git",
     "url": "https://github.com/christinabranson/git-grove"
   },
-  "homepage": "https://christinabranson.github.io/git-grove",
+  "homepage": "https://gitgrove.dev",
   "engines": {
     "node": ">=18"
   },

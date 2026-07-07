@@ -14,7 +14,7 @@
 
 > _See the forest. Manage the trees._
 
-[![CI](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml/badge.svg)](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/@gitgrove/cli/alpha?label=npm%20%40alpha)](https://www.npmjs.com/package/@gitgrove/cli) [![docs](https://img.shields.io/badge/docs-christinabranson.github.io%2Fgit--grove-blue)](https://christinabranson.github.io/git-grove)
+[![CI](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml/badge.svg)](https://github.com/christinabranson/git-grove/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/@gitgrove/cli/alpha?label=npm%20%40alpha)](https://www.npmjs.com/package/@gitgrove/cli) [![docs](https://img.shields.io/badge/docs-gitgrove.dev-blue)](https://gitgrove.dev)
 
 **Mission control for parallel git worktrees.**
 
@@ -50,7 +50,7 @@ DB_PORT=5435
 DB_SCHEMA=my_app_feat_payments
 ```
 
-Normally Grove hands these files straight to `docker compose --env-file`. If your startup needs more — waiting for a DB healthcheck, running migrations, seeding fixture data on first boot — a [custom startup script](https://christinabranson.github.io/git-grove/guides/docker#custom-startup-scripts) lets you take over while still receiving all the generated env vars.
+Normally Grove hands these files straight to `docker compose --env-file`. If your startup needs more — waiting for a DB healthcheck, running migrations, seeding fixture data on first boot — a [custom startup script](https://gitgrove.dev/guides/docker#custom-startup-scripts) lets you take over while still receiving all the generated env vars.
 
 ---
 
@@ -322,14 +322,14 @@ grove info                                 # show resolved configuration
 
 ## Documentation
 
-- [Why GitGrove?](https://christinabranson.github.io/git-grove/getting-started/why)
-- [Installation](https://christinabranson.github.io/git-grove/getting-started/installation)
-- [Quick Start](https://christinabranson.github.io/git-grove/getting-started/quickstart)
-- [Core Concepts](https://christinabranson.github.io/git-grove/getting-started/concepts)
-- [Common Workflows](https://christinabranson.github.io/git-grove/guides/workflows)
-- [AI Workflow Guide](https://christinabranson.github.io/git-grove/guides/ai-workflows)
-- [Docker Guide](https://christinabranson.github.io/git-grove/guides/docker)
-- [Command Reference](https://christinabranson.github.io/git-grove/commands/init)
+- [Why GitGrove?](https://gitgrove.dev/getting-started/why)
+- [Installation](https://gitgrove.dev/getting-started/installation)
+- [Quick Start](https://gitgrove.dev/getting-started/quickstart)
+- [Core Concepts](https://gitgrove.dev/getting-started/concepts)
+- [Common Workflows](https://gitgrove.dev/guides/workflows)
+- [AI Workflow Guide](https://gitgrove.dev/guides/ai-workflows)
+- [Docker Guide](https://gitgrove.dev/guides/docker)
+- [Command Reference](https://gitgrove.dev/commands/init)
 
 ---
 
