@@ -5,7 +5,7 @@ export default defineConfig({
   description:
     "Manage parallel development workflows with isolated git worktrees, environments, and AI coding sessions.",
 
-  base: "/git-grove/",
+  base: "/",
 
   appearance: "dark",
 
