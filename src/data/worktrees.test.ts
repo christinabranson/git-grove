@@ -1,4 +1,5 @@
 import { vi, describe, test, expect, beforeEach } from "vitest";
+import path from "path";
 import type { MockedFunction } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
@@ -15,6 +16,7 @@ import { mkdir, writeFile } from "fs/promises";
 import {
   resolveWorktreeRoot,
   detectRepoRoot,
+  detectCurrentBranch,
   loadWorktrees,
   detectDefaultBranch,
   createWorktreeWithBase,
@@ -63,13 +65,46 @@ describe("resolveWorktreeRoot", () => {
   });
 });
 
-describe("detectRepoRoot", () => {
-  test("returns the repo root from git rev-parse", async () => {
+describe("detectCurrentBranch", () => {
+  test("returns the current branch name", async () => {
     mockedExeca.mockResolvedValueOnce({
-      stdout: "/path/to/repo\n",
+      stdout: "feat/my-feature\n",
+    } as ReturnType<typeof execa>);
+    const result = await detectCurrentBranch();
+    expect(result).toBe("feat/my-feature");
+  });
+
+  test("throws on detached HEAD (empty output)", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "\n",
+    } as ReturnType<typeof execa>);
+    await expect(detectCurrentBranch()).rejects.toThrow("detached HEAD");
+  });
+
+  test("throws with helpful message when git fails", async () => {
+    mockedExeca.mockRejectedValueOnce(new Error("git error"));
+    await expect(detectCurrentBranch()).rejects.toThrow(
+      "pass a branch name explicitly",
+    );
+  });
+});
+
+describe("detectRepoRoot", () => {
+  test("returns the repo root from git rev-parse --git-common-dir", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: "/path/to/repo/.git\n",
     } as ReturnType<typeof execa>);
     const result = await detectRepoRoot();
     expect(result).toBe("/path/to/repo");
+  });
+
+  test("resolves relative .git path (main repo case)", async () => {
+    mockedExeca.mockResolvedValueOnce({
+      stdout: ".git\n",
+    } as ReturnType<typeof execa>);
+    const result = await detectRepoRoot();
+    // path.dirname(path.resolve(".git")) == the current working directory
+    expect(result).toBe(path.dirname(path.resolve(".git")));
   });
 
   test("throws when not inside a git repository", async () => {
@@ -81,7 +116,7 @@ describe("detectRepoRoot", () => {
 
   test("trims whitespace from git output", async () => {
     mockedExeca.mockResolvedValueOnce({
-      stdout: "  /path/to/repo  \n",
+      stdout: "  /path/to/repo/.git  \n",
     } as ReturnType<typeof execa>);
     const result = await detectRepoRoot();
     expect(result).toBe("/path/to/repo");
@@ -369,7 +404,7 @@ describe("createWorktreeWithBase", () => {
     );
   });
 
-  test("writes .grove/meta.json with the base branch", async () => {
+  test("writes .grove/active-worktree.json with the base branch", async () => {
     mockedExeca.mockResolvedValue({ stdout: "" } as ReturnType<typeof execa>);
     await createWorktreeWithBase(
       "/repo",
@@ -381,7 +416,7 @@ describe("createWorktreeWithBase", () => {
       recursive: true,
     });
     expect(mockedWriteFile).toHaveBeenCalledWith(
-      "/worktrees/feature-foo/.grove/meta.json",
+      "/worktrees/feature-foo/.grove/active-worktree.json",
       JSON.stringify({ baseBranch: "main" }, null, 2),
     );
   });

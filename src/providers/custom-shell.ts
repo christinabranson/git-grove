@@ -84,7 +84,19 @@ export class CustomShellProvider implements GroveProvider {
     private readonly serviceOverride?: string,
   ) {}
 
-  private resolveScript(script: string, label: string): string {
+  /**
+   * Returns true when the value looks like a file path (starts with ./, ../, or /).
+   * Otherwise treated as an inline shell command (e.g. "npm run dev").
+   */
+  private isFilePath(script: string): boolean {
+    return (
+      script.startsWith("./") ||
+      script.startsWith("../") ||
+      script.startsWith("/")
+    );
+  }
+
+  private resolveScriptPath(script: string, label: string): string {
     const resolved = path.resolve(this.worktreePath, script);
     if (
       !resolved.startsWith(this.worktreePath + path.sep) &&
@@ -95,15 +107,37 @@ export class CustomShellProvider implements GroveProvider {
     return resolved;
   }
 
-  async start(): Promise<GroveEnvironment> {
-    const scriptPath = this.resolveScript(this.script, "script");
-    if (!existsSync(scriptPath)) {
-      throw new Error(`Custom start script not found: ${scriptPath}`);
+  private async runScript(
+    script: string,
+    label: string,
+    envForScript: Record<string, string>,
+  ): Promise<void> {
+    if (this.isFilePath(script)) {
+      const scriptPath = this.resolveScriptPath(script, label);
+      if (!existsSync(scriptPath)) {
+        throw new Error(`${label} not found: ${scriptPath}`);
+      }
+      await execa("bash", [scriptPath], {
+        cwd: this.worktreePath,
+        env: envForScript,
+        stdio: "inherit",
+      });
+    } else {
+      await execa(script, {
+        shell: true,
+        cwd: this.worktreePath,
+        env: envForScript,
+        stdio: "inherit",
+      });
     }
+  }
 
+  async start(): Promise<GroveEnvironment> {
     const startupEnv = await buildStartupEnvironment(this.worktreePath);
     if (Object.keys(startupEnv.envWorktree).length === 0) {
-      throw new Error("Missing .env.worktree. Run through grove start.");
+      throw new Error(
+        "Missing .env.worktree. Run `grove new` or `grove up` to initialize.",
+      );
     }
     const { typed } = await parseEnvWorktree(this.worktreePath);
 
@@ -114,12 +148,7 @@ export class CustomShellProvider implements GroveProvider {
       GROVE_ENV_FILE: path.join(this.worktreePath, ".env.worktree"),
     };
 
-    await execa("bash", [scriptPath], {
-      cwd: this.worktreePath,
-      env: envForScript,
-      stdio: "inherit",
-    });
-
+    await this.runScript(this.script, "start script", envForScript);
     return this._buildEnv(typed, "running");
   }
 
@@ -127,27 +156,17 @@ export class CustomShellProvider implements GroveProvider {
     const { typed } = await parseEnvWorktree(this.worktreePath);
     const startupEnv = await buildStartupEnvironment(this.worktreePath);
 
+    const envForScript: Record<string, string> = {
+      ...startupEnv.merged,
+      GROVE_ENV_FILE: path.join(this.worktreePath, ".env.worktree"),
+    };
+
     if (this.stopScript) {
-      const stopPath = this.resolveScript(this.stopScript, "stopScript");
-      if (!existsSync(stopPath)) {
-        throw new Error(`Custom stop script not found: ${stopPath}`);
-      }
-
-      const envForScript: Record<string, string> = {
-        ...startupEnv.merged,
-        GROVE_ENV_FILE: path.join(this.worktreePath, ".env.worktree"),
-      };
-
-      await execa("bash", [stopPath], {
-        cwd: this.worktreePath,
-        env: envForScript,
-        stdio: "inherit",
-      });
+      await this.runScript(this.stopScript, "stop script", envForScript);
       return;
     }
 
-    // Fallback: stop via docker compose if a compose file is present.
-    // Matches the same filename list used by docker-compose-contract.ts.
+    // Fallback: docker compose down if a compose file is present.
     const composeFiles = [
       "compose.yaml",
       "compose.yml",
@@ -171,7 +190,13 @@ export class CustomShellProvider implements GroveProvider {
         ],
         { cwd: this.worktreePath },
       );
+      return;
     }
+
+    throw new Error(
+      "No stop command configured and no docker-compose file found. " +
+        'Run `grove config set stop "<command>"` to configure one.',
+    );
   }
 
   async status(): Promise<GroveEnvironment> {

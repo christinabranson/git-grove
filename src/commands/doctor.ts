@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { execa } from "execa";
 import { loadWorktrees } from "../data/worktrees.js";
 import { loadGroveConfig } from "../data/groveConfig.js";
+import { loadUserRepoConfig } from "../data/userConfig.js";
 import {
   discoverComposeContract,
   formatDoctorEnvReport,
@@ -47,19 +48,11 @@ async function checkGitRepo(
   }
 }
 
-function checkGroveDir(repoRoot: string): DoctorCheck {
-  const ok = existsSync(path.join(repoRoot, ".grove"));
+async function checkGroveConfig(repoRoot: string): Promise<DoctorCheck> {
+  const config = await loadUserRepoConfig(repoRoot);
+  const ok = config !== null;
   return {
-    name: ".grove directory exists",
-    ok,
-    message: ok ? undefined : "Run `grove setup` to initialize",
-  };
-}
-
-function checkGroveConfig(repoRoot: string): DoctorCheck {
-  const ok = existsSync(path.join(repoRoot, ".grove", "config.json"));
-  return {
-    name: "config.json exists",
+    name: "Grove config exists",
     ok,
     message: ok ? undefined : "Run `grove setup` to create it",
   };
@@ -105,8 +98,7 @@ export async function runDoctorChecks(cwd: string): Promise<DoctorResult> {
     return { ok: false, checks };
   }
 
-  checks.push(checkGroveDir(repoRoot));
-  checks.push(checkGroveConfig(repoRoot));
+  checks.push(await checkGroveConfig(repoRoot));
   checks.push(checkEnvWorktree(repoRoot));
 
   const worktreeCheck = await checkWorktreeState(repoRoot);

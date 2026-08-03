@@ -13,16 +13,16 @@ A walkthrough of using Grove's `custom-shell` provider to run a shell script as 
 ```
 my-app/
 ├── docker-compose.yml     # web + db services
-├── bin/
-│   ├── start.sh           # Grove calls this on grove start
-│   └── stop.sh            # Grove calls this on grove stop
-└── .grove/
-    └── config.json        # committed
+└── bin/
+    ├── start.sh           # Grove calls this on grove start
+    └── stop.sh            # Grove calls this on grove stop
 ```
+
+Grove config is stored in `~/.grove/` on your machine — run `grove setup` to generate it.
 
 ## Config
 
-**`.grove/config.json`:**
+**Grove config** (run `grove setup` to generate, `grove config list` to view):
 
 ```json
 {

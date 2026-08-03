@@ -20,7 +20,7 @@ Grove solves this with isolated worktrees that each get their own environment.
 grove setup
 ```
 
-Grove writes `.grove/config.json` with naming templates for ports, Compose project names, and DB schemas. Each worktree expands these templates independently.
+Grove saves config to `~/.grove/` with naming templates for ports, Compose project names, and DB schemas. Each worktree expands these templates independently.
 
 ### 2. Add AGENTS.md
 

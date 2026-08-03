@@ -7,11 +7,11 @@ A complete walkthrough of using Grove with a plain Node.js project — no Docker
 ```
 my-node-app/
 ├── package.json
-├── src/
-│   └── index.ts
-└── .grove/
-    └── config.json    # committed
+└── src/
+    └── index.ts
 ```
+
+Grove config is stored in `~/.grove/` on your machine — run `grove setup` to generate it.
 
 **`package.json`:**
 
@@ -32,7 +32,7 @@ cd my-node-app
 grove setup --preset node --yes
 ```
 
-This writes `.grove/config.json`:
+This saves Grove config to `~/.grove/`. The config shape (view with `grove config list`):
 
 ```json
 {

@@ -1,5 +1,4 @@
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+import { writeFile } from "fs/promises";
 import path from "path";
 import chalk from "chalk";
 import { detectProject } from "../setup/detect.js";
@@ -7,10 +6,14 @@ import { presets, recommendPreset, type PresetName } from "../setup/presets.js";
 import type { GroveConfig } from "../types.js";
 import { warnIfHardcodedComposePorts } from "../utils/hardcodedPortsCheck.js";
 import { DEFAULT_SHARED_COMPOSE_FILE } from "../providers/shared.js";
-import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
+import {
+  expandNaming,
+  buildCanonicalEnvVars,
+  extractPortsFromEnv,
+} from "../setup/naming.js";
 import { detectDefaultBranch } from "../data/worktrees.js";
 import { execa } from "execa";
-import { loadGroveConfig } from "../data/groveConfig.js";
+import { saveUserRepoConfig, loadUserRepoConfig } from "../data/userConfig.js";
 import {
   discoverComposeContract,
   readEnvFile,
@@ -72,22 +75,11 @@ function printDetectionSummary(
     console.log(chalk.gray("     Grove will write a minimal fallback config"));
   }
 
-  const existingConfig = path.join(repoPath, ".grove", "config.json");
-  if (existsSync(existingConfig)) {
-    console.log(chalk.yellow("\n  ⚠  .grove/config.json already exists"));
-  }
-
   console.log();
 }
 
 function printProposedConfig(config: GroveConfig): void {
-  console.log(
-    chalk.bold("Proposed") +
-      " " +
-      chalk.cyan(".grove/config.json") +
-      chalk.bold(":") +
-      "\n",
-  );
+  console.log(chalk.bold("Proposed config") + chalk.bold(":") + "\n");
   console.log(chalk.gray(JSON.stringify(config, null, 2)));
   console.log();
 }
@@ -98,10 +90,8 @@ function printGitignoreSuggestion(): void {
       "  Add these to .gitignore (local/runtime files, should not be committed):",
     ),
   );
-  console.log(chalk.gray("    .env"));
   console.log(chalk.gray("    .env.worktree"));
-  console.log(chalk.gray("    .worktree-manifest.json"));
-  console.log(chalk.gray("    .grove/meta.json"));
+  console.log(chalk.gray("    .grove/active-worktree.json"));
   console.log();
 }
 
@@ -120,21 +110,6 @@ async function confirm(question: string): Promise<boolean> {
       );
     });
   });
-}
-
-async function writeGroveConfig(
-  repoPath: string,
-  config: GroveConfig,
-): Promise<void> {
-  const groveDir = path.join(repoPath, ".grove");
-  if (!existsSync(groveDir)) {
-    await mkdir(groveDir, { recursive: true });
-  }
-  await writeFile(
-    path.join(groveDir, "config.json"),
-    JSON.stringify(config, null, 2) + "\n",
-    "utf-8",
-  );
 }
 
 async function resolveCurrentBranch(repoPath: string): Promise<string> {
@@ -163,11 +138,9 @@ async function regenerateEnvFromConfig(
   debugLog(debug, `branch resolved as: ${branch}`);
 
   const existingEnv = await readEnvFile(repoPath);
-  const existingWebPort = /^\d+$/.test(existingEnv["WEB_PORT"] ?? "")
-    ? Number.parseInt(existingEnv["WEB_PORT"], 10)
-    : undefined;
+  const existingPorts = extractPortsFromEnv(existingEnv);
   const expanded = expandNaming(config, branch);
-  const canonicalEnv = await buildCanonicalEnvVars(expanded, existingWebPort);
+  const canonicalEnv = await buildCanonicalEnvVars(expanded, existingPorts);
   const contract = await discoverComposeContract(repoPath);
   const sourceEnv = await readSourceEnvFiles(
     repoPath,
@@ -248,12 +221,11 @@ export async function runSetup(
   repoPath: string,
   opts: SetupOptions = {},
 ): Promise<void> {
-  const configPath = path.join(repoPath, ".grove", "config.json");
-
   // Guard: existing config without --reset
-  if (existsSync(configPath) && !opts.reset && !opts.dryRun) {
+  const existingConfig = await loadUserRepoConfig(repoPath);
+  if (existingConfig && !opts.reset && !opts.dryRun) {
     if (!opts.refreshEnv) {
-      console.log(chalk.yellow(".grove/config.json already exists."));
+      console.log(chalk.yellow("Grove is already configured for this repo."));
       console.log(
         chalk.gray(
           "  Run with --reset to regenerate it, or --dry-run to preview a new config.",
@@ -262,17 +234,7 @@ export async function runSetup(
       return;
     }
 
-    const existing = await loadGroveConfig(repoPath);
-    if (!existing) {
-      console.log(
-        chalk.yellow(
-          "Unable to refresh .env.worktree: .grove/config.json is missing, disabled, or invalid.",
-        ),
-      );
-      return;
-    }
-
-    await regenerateEnvFromConfig(repoPath, existing, opts.debug);
+    await regenerateEnvFromConfig(repoPath, existingConfig, opts.debug);
     return;
   }
 
@@ -360,7 +322,7 @@ export async function runSetup(
   // 5. Confirm (skip when --yes)
   if (!opts.yes) {
     const go = await confirm(
-      chalk.bold("Write .grove/config.json?") + chalk.gray(" (y/N) "),
+      chalk.bold("Save Grove config?") + chalk.gray(" (y/N) "),
     );
     if (!go) {
       console.log(chalk.gray("Cancelled."));
@@ -368,11 +330,11 @@ export async function runSetup(
     }
   }
 
-  // 6. Write
-  await writeGroveConfig(repoPath, config);
-
-  const action = existsSync(configPath) && opts.reset ? "Updated" : "Created";
-  console.log(chalk.green(`\n✓ ${action} .grove/config.json`));
+  // 6. Write to ~/.grove/repos/<repo-id>/config.json
+  const { configPath } = await saveUserRepoConfig(repoPath, config);
+  const action = opts.reset ? "Updated" : "Created";
+  console.log(chalk.green(`\n✓ ${action} Grove config`));
+  console.log(chalk.gray(`  ${configPath}`));
   console.log(chalk.gray("\nNext steps:"));
   console.log(
     chalk.gray(

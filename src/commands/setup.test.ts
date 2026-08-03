@@ -1,8 +1,7 @@
 import { vi, describe, test, expect, beforeEach } from "vitest";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
-vi.mock("fs", () => ({ existsSync: vi.fn() }));
-vi.mock("fs/promises", () => ({ writeFile: vi.fn(), mkdir: vi.fn() }));
+vi.mock("fs/promises", () => ({ writeFile: vi.fn() }));
 vi.mock("readline", () => ({
   default: { createInterface: vi.fn() },
   createInterface: vi.fn(),
@@ -11,7 +10,7 @@ vi.mock("../setup/detect.js");
 vi.mock("../setup/presets.js");
 vi.mock("../setup/naming.js");
 vi.mock("../data/worktrees.js");
-vi.mock("../data/groveConfig.js");
+vi.mock("../data/userConfig.js");
 vi.mock("../providers/docker-compose-contract.js");
 vi.mock("../providers/shared.js", () => ({
   DEFAULT_SHARED_COMPOSE_FILE: "compose.shared.yaml",
@@ -19,15 +18,14 @@ vi.mock("../providers/shared.js", () => ({
 vi.mock("../utils/hardcodedPortsCheck.js");
 
 import { execa } from "execa";
-import { existsSync } from "fs";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile } from "fs/promises";
 import * as readline from "readline";
 import type { MockedFunction } from "vitest";
 import { detectProject } from "../setup/detect.js";
 import { recommendPreset, presets } from "../setup/presets.js";
 import { expandNaming, buildCanonicalEnvVars } from "../setup/naming.js";
 import { detectDefaultBranch } from "../data/worktrees.js";
-import { loadGroveConfig } from "../data/groveConfig.js";
+import { loadUserRepoConfig, saveUserRepoConfig } from "../data/userConfig.js";
 import {
   discoverComposeContract,
   readEnvFile,
@@ -41,9 +39,7 @@ import { runSetup } from "./setup.js";
 import type { GroveConfig } from "../types.js";
 
 const mockedExeca = execa as MockedFunction<typeof execa>;
-const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
 const mockedWriteFile = writeFile as MockedFunction<typeof writeFile>;
-const mockedMkdir = mkdir as MockedFunction<typeof mkdir>;
 
 const fakeConfig: GroveConfig = {
   enabled: true,
@@ -81,10 +77,14 @@ function makeReadlineInterface(answer: string) {
 beforeEach(() => {
   vi.clearAllMocks();
 
-  mockedExistsSync.mockReturnValue(false);
   mockedWriteFile.mockResolvedValue(undefined);
-  mockedMkdir.mockResolvedValue(undefined as never);
   mockedExeca.mockResolvedValue({ stdout: "main" } as ReturnType<typeof execa>);
+
+  vi.mocked(loadUserRepoConfig).mockResolvedValue(null);
+  vi.mocked(saveUserRepoConfig).mockResolvedValue({
+    repoId: "test-repo-id",
+    configPath: "/home/user/.grove/repos/test-repo-id/config.json",
+  });
 
   vi.mocked(detectProject).mockResolvedValue(fakeDetection as never);
   vi.mocked(recommendPreset).mockReturnValue("docker-compose" as never);
@@ -92,7 +92,6 @@ beforeEach(() => {
     "docker-compose"
   ] = { generate: vi.fn().mockReturnValue({ ...fakeConfig }) };
   vi.mocked(detectDefaultBranch).mockResolvedValue("main");
-  vi.mocked(loadGroveConfig).mockResolvedValue(null);
   vi.mocked(warnIfHardcodedComposePorts).mockResolvedValue(undefined);
 
   vi.mocked(expandNaming).mockReturnValue({} as never);
@@ -116,23 +115,20 @@ beforeEach(() => {
 
 describe("existing config guard", () => {
   test("returns early without writing when config exists and no --reset or --refreshEnv", async () => {
-    mockedExistsSync.mockReturnValue(true);
+    vi.mocked(loadUserRepoConfig).mockResolvedValue(fakeConfig);
     await runSetup("/repo", {});
-    expect(mockedWriteFile).not.toHaveBeenCalled();
+    expect(vi.mocked(saveUserRepoConfig)).not.toHaveBeenCalled();
     expect(vi.mocked(detectProject)).not.toHaveBeenCalled();
   });
 
   test("proceeds when config exists and --reset is set", async () => {
-    mockedExistsSync.mockReturnValue(false); // config doesn't exist for the guard
+    vi.mocked(loadUserRepoConfig).mockResolvedValue(null);
     await runSetup("/repo", { yes: true, reset: true });
     expect(vi.mocked(detectProject)).toHaveBeenCalled();
   });
 
   test("regenerates .env.worktree when config exists and --refreshEnv is set", async () => {
-    mockedExistsSync.mockImplementation((p) =>
-      String(p).endsWith("config.json"),
-    );
-    vi.mocked(loadGroveConfig).mockResolvedValue(fakeConfig);
+    vi.mocked(loadUserRepoConfig).mockResolvedValue(fakeConfig);
     await runSetup("/repo", { refreshEnv: true });
     expect(mockedWriteFile).toHaveBeenCalledWith(
       expect.stringContaining(".env.worktree"),
@@ -141,15 +137,6 @@ describe("existing config guard", () => {
     );
     expect(vi.mocked(detectProject)).not.toHaveBeenCalled();
   });
-
-  test("returns early with warning when --refreshEnv but loadGroveConfig returns null", async () => {
-    mockedExistsSync.mockImplementation((p) =>
-      String(p).endsWith("config.json"),
-    );
-    vi.mocked(loadGroveConfig).mockResolvedValue(null);
-    await runSetup("/repo", { refreshEnv: true });
-    expect(mockedWriteFile).not.toHaveBeenCalled();
-  });
 });
 
 // --- dry run ---
@@ -157,7 +144,7 @@ describe("existing config guard", () => {
 describe("--dry-run", () => {
   test("does not write config file in dry-run mode", async () => {
     await runSetup("/repo", { dryRun: true });
-    expect(mockedWriteFile).not.toHaveBeenCalled();
+    expect(vi.mocked(saveUserRepoConfig)).not.toHaveBeenCalled();
   });
 
   test("still calls detectProject in dry-run mode", async () => {
@@ -200,39 +187,21 @@ describe("preset selection", () => {
 // --- config writing ---
 
 describe("config writing", () => {
-  test("writes .grove/config.json when confirmed with --yes", async () => {
+  test("calls saveUserRepoConfig when confirmed with --yes", async () => {
     await runSetup("/repo", { yes: true });
-    expect(mockedWriteFile).toHaveBeenCalledWith(
-      expect.stringContaining("config.json"),
-      expect.stringContaining('"project"'),
-      "utf-8",
+    expect(vi.mocked(saveUserRepoConfig)).toHaveBeenCalledWith(
+      "/repo",
+      expect.objectContaining({ project: "myapp" }),
     );
   });
 
-  test("creates .grove directory when it does not exist", async () => {
-    mockedExistsSync.mockReturnValue(false);
-    await runSetup("/repo", { yes: true });
-    expect(mockedMkdir).toHaveBeenCalledWith(
-      expect.stringContaining(".grove"),
-      { recursive: true },
-    );
-  });
-
-  test("skips mkdir when .grove directory already exists", async () => {
-    mockedExistsSync.mockImplementation((p) => String(p).endsWith(".grove"));
-    await runSetup("/repo", { yes: true });
-    expect(mockedMkdir).not.toHaveBeenCalled();
-  });
-
-  test("sets defaultBaseBranch from detectDefaultBranch in written config", async () => {
+  test("sets defaultBaseBranch from detectDefaultBranch in saved config", async () => {
     vi.mocked(detectDefaultBranch).mockResolvedValue("develop");
     await runSetup("/repo", { yes: true });
-    const call = mockedWriteFile.mock.calls.find((c) =>
-      String(c[0]).endsWith("config.json"),
-    );
+    const call = vi.mocked(saveUserRepoConfig).mock.calls[0];
     expect(call).toBeDefined();
-    const written = JSON.parse(call![1] as string);
-    expect(written.worktrees?.defaultBaseBranch).toBe("develop");
+    const savedConfig = call[1];
+    expect(savedConfig.worktrees?.defaultBaseBranch).toBe("develop");
   });
 });
 
@@ -244,19 +213,15 @@ describe("confirmation prompt", () => {
       makeReadlineInterface("n") as never,
     );
     await runSetup("/repo", {});
-    expect(mockedWriteFile).not.toHaveBeenCalled();
+    expect(vi.mocked(saveUserRepoConfig)).not.toHaveBeenCalled();
   });
 
-  test("writes config when user answers 'y'", async () => {
+  test("saves config when user answers 'y'", async () => {
     vi.mocked(readline.createInterface).mockReturnValue(
       makeReadlineInterface("y") as never,
     );
     await runSetup("/repo", {});
-    expect(mockedWriteFile).toHaveBeenCalledWith(
-      expect.stringContaining("config.json"),
-      expect.any(String),
-      "utf-8",
-    );
+    expect(vi.mocked(saveUserRepoConfig)).toHaveBeenCalled();
   });
 });
 

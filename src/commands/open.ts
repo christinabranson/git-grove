@@ -23,7 +23,7 @@ export async function runOpen(
   const editor = await resolveEditor(groveConfig?.editor);
   if (!editor) {
     throw new Error(
-      'No editor found — set $VISUAL, $EDITOR, or add "editor" to .grove/config.json',
+      "No editor found — set $VISUAL, $EDITOR, or run `grove config set editor <cmd>`",
     );
   }
   console.log(`Opening ${target.branch} in ${editorDisplayName(editor.bin)}…`);

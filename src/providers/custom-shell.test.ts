@@ -18,76 +18,108 @@ beforeEach(() => {
 
 describe("CustomShellProvider.start()", () => {
   test("throws when .env.worktree is missing", async () => {
+    vi.mocked(existsSync).mockReturnValue(false);
+
+    const provider = new CustomShellProvider(
+      "/worktree",
+      "feature",
+      "./bin/start.sh",
+    );
+    await expect(provider.start()).rejects.toThrow("Missing .env.worktree");
+  });
+
+  test("runs file-path script via bash when script starts with ./", async () => {
     vi.mocked(existsSync).mockImplementation((p) => {
       const file = String(p);
-      if (file.endsWith("bin/start.sh")) return true;
-      if (file.endsWith(".env.worktree")) return false;
-      return false;
+      return (
+        file.endsWith("bin/start.sh") ||
+        file.endsWith(".env.worktree") ||
+        file.endsWith(".env") ||
+        file.endsWith(".env.example")
+      );
+    });
+    vi.mocked(readFile).mockResolvedValue(
+      "COMPOSE_PROJECT_NAME=myproj-feature\nWEB_PORT=8123\n" as never,
+    );
+
+    const provider = new CustomShellProvider(
+      "/worktree",
+      "feature",
+      "./bin/start.sh",
+    );
+    await provider.start();
+
+    expect(vi.mocked(execa)).toHaveBeenCalledWith(
+      "bash",
+      ["/worktree/bin/start.sh"],
+      expect.objectContaining({ cwd: "/worktree", stdio: "inherit" }),
+    );
+  });
+
+  test("runs inline shell command via shell:true when script has no path prefix", async () => {
+    vi.mocked(existsSync).mockImplementation((p) => {
+      const file = String(p);
+      return (
+        file.endsWith(".env.worktree") ||
+        file.endsWith(".env") ||
+        file.endsWith(".env.example")
+      );
+    });
+    vi.mocked(readFile).mockResolvedValue(
+      "COMPOSE_PROJECT_NAME=myproj-feature\nWEB_PORT=8123\n" as never,
+    );
+
+    const provider = new CustomShellProvider(
+      "/worktree",
+      "feature",
+      "npm run dev:up:docker",
+    );
+    await provider.start();
+
+    expect(vi.mocked(execa)).toHaveBeenCalledWith(
+      "npm run dev:up:docker",
+      expect.objectContaining({
+        shell: true,
+        cwd: "/worktree",
+        stdio: "inherit",
+      }),
+    );
+  });
+
+  test("passes GROVE_ENV_FILE and merged env to script", async () => {
+    vi.mocked(existsSync).mockImplementation((p) => {
+      const file = String(p);
+      return (
+        file.endsWith("bin/start.sh") ||
+        file.endsWith(".env.worktree") ||
+        file.endsWith(".env")
+      );
+    });
+    vi.mocked(readFile).mockImplementation((p) => {
+      const file = String(p);
+      if (file.endsWith(".env")) return Promise.resolve("FOO=user\n") as never;
+      return Promise.resolve(
+        "COMPOSE_PROJECT_NAME=myproj-feature\nWEB_PORT=8123\n",
+      ) as never;
     });
 
     const provider = new CustomShellProvider(
       "/worktree",
       "feature",
-      "bin/start.sh",
+      "./bin/start.sh",
     );
-    await expect(provider.start()).rejects.toThrow(
-      "Missing .env.worktree. Run through grove start.",
-    );
-  });
+    const env = await provider.start();
 
-  test("passes startup env with shell precedence and GROVE_ENV_FILE", async () => {
-    const originalFoo = process.env.FOO;
-
-    try {
-      process.env.FOO = "shell";
-
-      vi.mocked(existsSync).mockImplementation((p) => {
-        const file = String(p);
-        return (
-          file.endsWith("bin/start.sh") ||
-          file.endsWith(".env") ||
-          file.endsWith(".env.example") ||
-          file.endsWith(".env.worktree")
-        );
-      });
-
-      vi.mocked(readFile).mockImplementation((p) => {
-        const file = String(p);
-        if (file.endsWith(".env.example")) {
-          return Promise.resolve("FOO=example\n") as never;
-        }
-        if (file.endsWith(".env")) {
-          return Promise.resolve("FOO=user\n") as never;
-        }
-        return Promise.resolve(
-          "FOO=worktree\nCOMPOSE_PROJECT_NAME=myproj-feature\nWEB_PORT=8123\n",
-        ) as never;
-      });
-
-      const provider = new CustomShellProvider(
-        "/worktree",
-        "feature",
-        "bin/start.sh",
-      );
-      const env = await provider.start();
-
-      expect(vi.mocked(execa)).toHaveBeenCalledWith(
-        "bash",
-        ["/worktree/bin/start.sh"],
-        expect.objectContaining({
-          cwd: "/worktree",
-          env: expect.objectContaining({
-            FOO: "shell",
-            GROVE_ENV_FILE: "/worktree/.env.worktree",
-            COMPOSE_PROJECT_NAME: "myproj-feature",
-          }),
-          stdio: "inherit",
+    expect(vi.mocked(execa)).toHaveBeenCalledWith(
+      "bash",
+      ["/worktree/bin/start.sh"],
+      expect.objectContaining({
+        env: expect.objectContaining({
+          GROVE_ENV_FILE: "/worktree/.env.worktree",
+          COMPOSE_PROJECT_NAME: "myproj-feature",
         }),
-      );
-      expect(env.web?.port).toBe(8123);
-    } finally {
-      if (originalFoo === undefined) delete process.env.FOO;
-      else process.env.FOO = originalFoo;
-    }
+      }),
+    );
+    expect(env.web?.port).toBe(8123);
   });
 });

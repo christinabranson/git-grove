@@ -36,7 +36,7 @@ class FallbackProvider implements GroveProvider {
  *
  * Resolution is a three-stage pipeline:
  *   1. detectProject() — single filesystem scan, produces all capability hints
- *   2. .grove/config.json — optional explicit override
+ *   2. Grove config (~/.grove/) — optional explicit override
  *   3. Provider routing — pure decision logic, no additional filesystem reads
  */
 export async function discoverProvider(
@@ -48,9 +48,22 @@ export async function discoverProvider(
     detectProject(worktreePath),
   ]);
 
-  // 1. Explicit grove config wins
-  if (config) {
-    return resolveFromConfig(config, worktreePath, envName);
+  // 1. Top-level start script — preferred, runs a single command for the whole environment
+  if (config?.start) {
+    return new CustomShellProvider(
+      worktreePath,
+      envName,
+      config.start,
+      config.stop,
+    );
+  }
+
+  // 2. Explicit providers config (legacy / advanced)
+  if (config && (config.providers ?? {})) {
+    const entries = Object.entries(config.providers ?? {});
+    if (entries.length > 0) {
+      return resolveFromConfig(config, worktreePath, envName);
+    }
   }
 
   // 2. Docker Compose — use detection output, no redundant filesystem checks
@@ -82,9 +95,7 @@ function resolveFromConfig(
   worktreePath: string,
   envName: string,
 ): GroveProvider {
-  // Use the first configured provider. Multi-provider support (web + api separately)
-  // can be layered on later; for now we pick the dominant service.
-  const entries = Object.entries(config.providers);
+  const entries = Object.entries(config.providers ?? {});
   if (entries.length === 0) return new FallbackProvider(worktreePath, envName);
 
   const [, providerConfig] = entries[0];
@@ -105,7 +116,7 @@ function resolveFromConfig(
     case "custom-shell":
       if (!providerConfig.script) {
         throw new Error(
-          `custom-shell provider requires a "script" field in .grove/config.json`,
+          `custom-shell provider requires a "script" field — run \`grove config set providers.<name>.script <path>\``,
         );
       }
       return new CustomShellProvider(

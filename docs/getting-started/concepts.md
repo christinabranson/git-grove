@@ -43,10 +43,10 @@ A **provider** is how Grove starts and stops a worktree's development environmen
 | ---------------- | --------------------------------------------------------------------- |
 | `docker-compose` | `docker-compose.yml` or `compose.yaml` exists + `.env.worktree` found |
 | `node-scripts`   | `package.json` has a `dev` or `start` script                          |
-| `custom-shell`   | Configured explicitly in `.grove/config.json`                         |
+| `custom-shell`   | Configured explicitly via `grove setup` or `grove config set`         |
 | `unknown`        | No recognized project type — Grove takes no destructive action        |
 
-You can also configure providers explicitly in `.grove/config.json` to skip auto-detection. The `custom-shell` provider is always explicit — it never auto-detects — and lets you run any shell script as the startup sequence (see [Custom startup scripts](/guides/docker#custom-startup-scripts)).
+You can also configure providers explicitly via `grove config set` to skip auto-detection. The `custom-shell` provider is always explicit — it never auto-detects — and lets you run any shell script as the startup sequence (see [Custom startup scripts](/guides/docker#custom-startup-scripts)).
 
 ## `.env.worktree`
 
@@ -61,7 +61,7 @@ DB_SCHEMA=my_app_feat_auth_refresh
 SHARED_PROJECT_NAME=my-app-shared
 ```
 
-Grove generates this from naming templates in `.grove/config.json` using port allocation to ensure no two worktrees share ports. When you run `grove start`, Grove creates this file if it doesn't exist. You can regenerate it with `grove start <branch> --refresh-env`.
+Grove generates this from naming templates in your Grove config using port allocation to ensure no two worktrees share ports. When you run `grove start`, Grove creates this file if it doesn't exist. You can regenerate it with `grove start <branch> --refresh-env`.
 
 ## Agent Manifest
 
@@ -94,7 +94,7 @@ Grove is a **progressive enhancement** — you adopt as much as you need:
 | ----- | ------------------------------------------------------------------- | ------------------------- |
 | 0     | TUI visibility into all worktrees, git status, change footprint     | None                      |
 | 1     | Docker stack management with unique ports per worktree              | `.env.worktree` file      |
-| 2     | Full env lifecycle, naming templates, shared infra, env contracts   | `.grove/config.json`      |
+| 2     | Full env lifecycle, naming templates, shared infra, env contracts   | `grove setup`             |
 | 3     | Agent status display in TUI, machine-readable `grove status --json` | `.worktree-manifest.json` |
 
 Each level builds on the previous. Remove Grove and your project works exactly the same — there are no custom abstractions that need to stay in place.

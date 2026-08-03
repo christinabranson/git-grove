@@ -13,7 +13,7 @@ grove start <branch|PR#> [options]
 1. Resolves the target (branch name or PR number → branch)
 2. Creates the worktree at the configured root, or attaches to an existing one
 3. Bootstraps `.env` from `.env.example` when `.env` is missing
-4. Generates or refreshes `.env.worktree` from naming templates in `.grove/config.json`
+4. Generates or refreshes `.env.worktree` from naming templates in Grove config
 5. Starts the shared infrastructure stack if configured and not already running
 6. Discovers the environment provider and starts it
 7. Prints the environment URLs (or JSON if `--json`)
@@ -96,15 +96,13 @@ Requires the `gh` CLI to be installed and authenticated.
 
 Worktrees are placed at `<repo-parent>/<repo-name>-worktrees/<branch-safe>` by default. Override with:
 
-```json
-{ "worktrees": { "root": "/your/path" } }
+```bash
+grove config set worktrees.root /your/path
 ```
-
-Or set `GROVE_WORKTREE_ROOT=/your/path` as an environment variable.
 
 ## .env.worktree generation
 
-If `.grove/config.json` has a `naming` section, Grove refreshes `.env.worktree` on every `grove start` so branch-specific values stay current.
+If Grove config has a `naming` section, Grove refreshes `.env.worktree` on every `grove start` so branch-specific values stay current.
 
 Grove treats `.env` as user-owned: if `.env` is missing and `.env.example` exists,
 it copies `.env.example` to `.env` once and never overwrites `.env` afterwards.

@@ -4,6 +4,7 @@ vi.mock("execa", () => ({ execa: vi.fn() }));
 vi.mock("fs", () => ({ existsSync: vi.fn() }));
 vi.mock("../data/worktrees.js");
 vi.mock("../data/groveConfig.js");
+vi.mock("../data/userConfig.js");
 vi.mock("../providers/docker-compose-contract.js");
 
 import { execa } from "execa";
@@ -11,6 +12,7 @@ import { existsSync } from "fs";
 import type { MockedFunction } from "vitest";
 import { loadWorktrees } from "../data/worktrees.js";
 import { loadGroveConfig } from "../data/groveConfig.js";
+import { loadUserRepoConfig } from "../data/userConfig.js";
 import {
   discoverComposeContract,
   preflightComposeEnv,
@@ -47,10 +49,12 @@ const fakeContract = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(loadUserRepoConfig).mockResolvedValue(null);
   vi.mocked(loadGroveConfig).mockResolvedValue(null);
   vi.mocked(readEnvFile).mockResolvedValue({});
   vi.mocked(discoverComposeContract).mockResolvedValue(fakeContract as never);
   vi.mocked(formatDoctorEnvReport).mockReturnValue("env report");
+  mockedExistsSync.mockReturnValue(false);
 });
 
 // --- runDoctorChecks ---
@@ -65,9 +69,10 @@ describe("runDoctorChecks", () => {
 
   test("returns ok=true when all required checks pass", async () => {
     mockedExeca
-      .mockResolvedValueOnce({ stdout: "/repo" } as ReturnType<typeof execa>) // git rev-parse
-      .mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>); // git worktree list
-    mockedExistsSync.mockReturnValue(true);
+      .mockResolvedValueOnce({ stdout: "/repo" } as ReturnType<typeof execa>)
+      .mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>);
+    vi.mocked(loadUserRepoConfig).mockResolvedValue({ enabled: true } as never);
+    mockedExistsSync.mockReturnValue(false); // .env.worktree optional
     const result = await runDoctorChecks("/repo");
     expect(result.ok).toBe(true);
   });
@@ -78,18 +83,17 @@ describe("runDoctorChecks", () => {
     expect(result.checks[0].name).toContain("Git repository");
   });
 
-  test("returns ok=false when .grove directory is missing", async () => {
+  test("returns ok=false when grove config is missing", async () => {
     mockedExeca
       .mockResolvedValueOnce({ stdout: "/repo" } as ReturnType<typeof execa>)
       .mockResolvedValueOnce({ stdout: "" } as ReturnType<typeof execa>);
-    mockedExistsSync
-      .mockReturnValueOnce(false) // .grove dir missing
-      .mockReturnValue(false);
+    vi.mocked(loadUserRepoConfig).mockResolvedValue(null);
+    mockedExistsSync.mockReturnValue(false);
     const result = await runDoctorChecks("/repo");
     expect(result.ok).toBe(false);
-    expect(result.checks.some((c) => c.name.includes(".grove") && !c.ok)).toBe(
-      true,
-    );
+    expect(
+      result.checks.some((c) => c.name === "Grove config exists" && !c.ok),
+    ).toBe(true);
   });
 });
 

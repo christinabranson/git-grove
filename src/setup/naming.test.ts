@@ -4,6 +4,7 @@ import {
   expandNaming,
   buildEnvAgent,
   buildCanonicalEnvVars,
+  extractPortsFromEnv,
   extractPublishedHostPorts,
 } from "./naming.js";
 import type { ExpandedNaming } from "./naming.js";
@@ -130,7 +131,7 @@ describe("expandNaming", () => {
     });
   });
 
-  test("normalizes scalar canonical ports from naming.ports overrides", () => {
+  test("scalar naming.webPort/apiPort/dbPort take precedence over naming.ports map", () => {
     const config: GroveConfig = {
       ...baseConfig,
       naming: {
@@ -145,13 +146,13 @@ describe("expandNaming", () => {
       },
     };
     const result = expandNaming(config, "main");
-    expect(result.webPort).toBe(63000);
-    expect(result.apiPort).toBe(63001);
-    expect(result.dbPort).toBe(63002);
+    expect(result.webPort).toBe(62000);
+    expect(result.apiPort).toBe(62001);
+    expect(result.dbPort).toBe(62002);
     expect(result.ports).toMatchObject({
-      WEB_PORT: 63000,
-      API_PORT: 63001,
-      DB_PORT: 63002,
+      WEB_PORT: 62000,
+      API_PORT: 62001,
+      DB_PORT: 62002,
     });
   });
 
@@ -237,21 +238,20 @@ describe("buildEnvAgent", () => {
     expect(result).toContain("REDIS_PORT=6381");
   });
 
-  test("uses existingWebPort as starting point when webPort is auto", async () => {
-    // Keep WEB/API static in this test so we avoid relying on open-port state.
-    const expanded: ExpandedNaming = {
+  test("preserves locked port values from existingPorts", async () => {
+    const autoExpanded: ExpandedNaming = {
       ...explicitExpanded,
-      webPort: 62010,
-      apiPort: 62011,
-      ports: {
-        ...explicitExpanded.ports,
-        WEB_PORT: 62010,
-        API_PORT: 62011,
-      },
+      webPort: "auto",
+      apiPort: "auto",
+      ports: { WEB_PORT: "auto", API_PORT: "auto", DB_PORT: 62044 },
     };
-    const result = await buildEnvAgent(expanded);
-    expect(result).toContain("WEB_PORT=62010");
-    expect(result).toContain("API_PORT=62011");
+    const result = await buildCanonicalEnvVars(autoExpanded, {
+      WEB_PORT: 62010,
+      API_PORT: 62011,
+    });
+    expect(result["WEB_PORT"]).toBe("62010");
+    expect(result["API_PORT"]).toBe("62011");
+    expect(result["DB_PORT"]).toBe("62044"); // explicit config value
   });
 
   test("throws a clear error when two env keys configure the same port", async () => {
@@ -270,6 +270,36 @@ describe("buildEnvAgent", () => {
     await expect(buildCanonicalEnvVars(expanded)).rejects.toThrow(
       "WEB_PORT and DB_PORT",
     );
+  });
+});
+
+describe("extractPortsFromEnv", () => {
+  test("extracts _PORT keys with numeric values", () => {
+    const result = extractPortsFromEnv({
+      WEB_PORT: "3001",
+      API_PORT: "3002",
+      DB_PORT: "5432",
+      COMPOSE_PROJECT_NAME: "myapp-main",
+      DB_SCHEMA: "myapp_main",
+    });
+    expect(result).toEqual({ WEB_PORT: 3001, API_PORT: 3002, DB_PORT: 5432 });
+  });
+
+  test("ignores non-numeric _PORT values", () => {
+    const result = extractPortsFromEnv({ WEB_PORT: "auto", API_PORT: "3002" });
+    expect(result).toEqual({ API_PORT: 3002 });
+  });
+
+  test("ignores keys that don't end in _PORT", () => {
+    const result = extractPortsFromEnv({
+      COMPOSE_PROJECT_NAME: "app",
+      WEB_PORT: "3001",
+    });
+    expect(result).toEqual({ WEB_PORT: 3001 });
+  });
+
+  test("returns empty object for empty env", () => {
+    expect(extractPortsFromEnv({})).toEqual({});
   });
 });
 

@@ -1,6 +1,6 @@
 # grove setup
 
-Initialize a repository for Grove environment management. Detects your project type and writes `.grove/config.json`.
+Initialize a repository for Grove environment management. Detects your project type and saves config to `~/.grove/`.
 
 ```bash
 grove setup [options]
@@ -11,8 +11,10 @@ grove setup [options]
 `grove setup` inspects the current repository and:
 
 1. Detects your project type (Docker Compose, Vite, Node)
-2. Proposes a `.grove/config.json` with naming templates and provider config
-3. Asks for confirmation before writing anything
+2. Proposes a config with naming templates and provider config
+3. Asks for confirmation, then saves to `~/.grove/repos/<repo-id>/config.json`
+
+Each developer runs this once per machine. The config is not committed to the repository — it lives in `~/.grove/` and is private to your machine.
 
 Without any flags, it's fully interactive and non-destructive.
 
@@ -28,7 +30,7 @@ Detecting project type…
 
   Using preset: docker (auto-detected)
 
-Proposed .grove/config.json:
+Proposed config:
 
 {
   "enabled": true,
@@ -50,7 +52,7 @@ Proposed .grove/config.json:
   "worktrees": { "prefix": "grove", "defaultBaseBranch": "main" }
 }
 
-Write .grove/config.json? (y/N)
+Save Grove config to ~/.grove/? (y/N)
 ```
 
 ## Flags
@@ -61,7 +63,7 @@ Write .grove/config.json? (y/N)
 | `--dry-run`       | Print the proposed config without writing anything              |
 | `--refresh-env`   | Regenerate `.env.worktree` in the current worktree from config  |
 | `--yes`           | Skip the confirmation prompt                                    |
-| `--reset`         | Overwrite an existing `.grove/config.json`                      |
+| `--reset`         | Overwrite existing Grove config in `~/.grove/`                  |
 | `--debug`         | Show detection details                                          |
 
 ## Examples
@@ -83,13 +85,17 @@ grove setup --refresh-env          # regenerate .env.worktree in current worktre
 | `vite`   | Vite-based frontend. Runs `npm run dev` per worktree.                            |
 | `node`   | Generic Node.js project. Runs `npm run dev` or `npm start` per worktree.         |
 
-## The generated config
+## After setup
 
-`.grove/config.json` can be committed — it describes how the project works, not per-worktree state. Runtime env files should be gitignored:
+View or edit your config with the `grove config` commands:
 
-```gitignore
-.env
-.env.worktree
+```bash
+grove config list                        # show all settings
+grove config get project                 # get a single value
+grove config set editor cursor           # set a value
+grove config set naming.webPort 8080     # fix a port
 ```
+
+Run `grove config set --help` for the full list of available keys and types.
 
 See the [Docker guide](/guides/docker) for a full breakdown of config options including `envContract`, `sharedComposeFile`, and naming templates.

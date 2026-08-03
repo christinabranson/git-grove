@@ -116,7 +116,7 @@ Grove reads `git worktree list` and displays them. Nothing to configure.
 grove setup
 ```
 
-Grove detects your project type (Docker Compose, Vite, Node) and writes `.grove/config.json`. This is optional — skip it if you only need worktree visibility.
+Grove detects your project type (Docker Compose, Vite, Node) and saves config to `~/.grove/`. This is optional — skip it if you only need worktree visibility.
 
 **4. Create a worktree**
 
@@ -217,7 +217,7 @@ grove open feat/notifications
 
 ### Monorepo workflows
 
-For projects with multiple services, configure `.grove/config.json` with per-service providers and naming templates:
+For projects with multiple services, configure Grove with per-service providers and naming templates (run `grove setup`, then `grove config set` to customize):
 
 ```json
 {
@@ -292,7 +292,10 @@ grove delete feat/my-feature               # remove worktree (confirmation promp
 grove delete feat/my-feature --yes         # skip confirmation
 grove delete feat/my-feature --delete-branch
 grove prune                                # clean up stale worktree metadata
-grove setup                                # detect project type, write .grove/config.json
+grove setup                                # detect project type, save config to ~/.grove/
+grove config list                          # view current config
+grove config get <key>                     # get a config value
+grove config set <key> <value>             # update a config value
 grove setup --preset docker --yes          # non-interactive
 grove setup --dry-run                      # preview without writing
 grove shared up                            # start shared infrastructure stack

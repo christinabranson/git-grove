@@ -103,7 +103,7 @@ async function readBaseBranch(
   branch: string,
 ): Promise<string | null> {
   // 1. Grove-written metadata (set when worktree was created with --base)
-  const metaPath = path.join(worktreePath, ".grove", "meta.json");
+  const metaPath = path.join(worktreePath, ".grove", "active-worktree.json");
   if (existsSync(metaPath)) {
     try {
       const raw = await readFile(metaPath, "utf-8");
@@ -345,7 +345,7 @@ export async function loadWorktrees(
  *
  * Priority:
  *   1. $GROVE_WORKTREE_ROOT environment variable
- *   2. worktrees.root in .grove/config.json
+ *   2. worktrees.root in Grove config (~/.grove/repos/<id>/config.json)
  *   3. Default: <repo-parent>/<repo-name>-worktrees
  */
 export function resolveWorktreeRoot(
@@ -362,10 +362,30 @@ export function resolveWorktreeRoot(
 
 export async function detectRepoRoot(): Promise<string> {
   try {
-    const { stdout } = await execa("git", ["rev-parse", "--show-toplevel"]);
-    return stdout.trim();
+    // --git-common-dir always points to the main repo's .git, even from a worktree.
+    // --show-toplevel would return the worktree directory instead, breaking all
+    // path calculations when grove is invoked from inside a worktree.
+    const { stdout } = await execa("git", ["rev-parse", "--git-common-dir"]);
+    // May be relative (e.g. ".git") when already in the main repo, or absolute from a worktree.
+    return path.dirname(path.resolve(stdout.trim()));
   } catch {
     throw new Error("Not inside a git repository");
+  }
+}
+
+export async function detectCurrentBranch(): Promise<string> {
+  try {
+    const { stdout } = await execa("git", ["branch", "--show-current"]);
+    const branch = stdout.trim();
+    if (!branch)
+      throw new Error("detached HEAD state — pass a branch name explicitly");
+    return branch;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("detached HEAD"))
+      throw err;
+    throw new Error(
+      "Could not detect current branch — pass a branch name explicitly",
+    );
   }
 }
 
@@ -428,7 +448,7 @@ export async function createWorktreeWithBase(
   const groveMetaDir = path.join(worktreePath, ".grove");
   await mkdir(groveMetaDir, { recursive: true });
   await writeFile(
-    path.join(groveMetaDir, "meta.json"),
+    path.join(groveMetaDir, "active-worktree.json"),
     JSON.stringify({ baseBranch: base }, null, 2),
   );
 }
