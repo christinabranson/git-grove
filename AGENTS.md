@@ -182,7 +182,10 @@ CI runs:
 npm ci
 npx prettier --check .
 npm run test:run
+npx fallow audit --base main
 ```
+
+`fallow audit` only fails on dead code, duplication, or complexity **introduced by your change** (pre-existing issues elsewhere in the repo don't block you). Run it before finishing a task; if it flags something, either fix it or check `npx fallow explain <issue-type>` for guidance. Before deleting anything fallow calls unused, run `npx fallow dead-code --trace <file>:<export>` to confirm it's actually unreferenced.
 
 ### Agent Checklist (before finishing a task)
 
@@ -191,6 +194,7 @@ You MUST ensure:
 - [ ] Dependencies install cleanly (`npm ci`)
 - [ ] Formatting passes (`prettier --check`)
 - [ ] Tests pass (`npm run test:run`)
+- [ ] `npx fallow audit --base main` reports no new issues
 - [ ] No unused imports or obvious TypeScript errors
 - [ ] CLI still runs without crashing
 
